@@ -1,0 +1,40 @@
+<?php
+
+use App\Http\Controllers\ProfileController;
+use App\Livewire\Pos\Terminal;
+use App\Livewire\Scanner\CardManager;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', function () {
+    return view('dashboard');
+})->name('dashboard');
+
+// Breeze Profile (still needs auth)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// POS Terminal - Nu tijdelijk zonder login
+Route::get('/pos', Terminal::class)->name('pos.index');
+
+// Scanner / Cards - Nu tijdelijk zonder login
+Route::get('/scanner', CardManager::class)->name('scanner.index');
+
+use App\Livewire\Admin\CategoryManager;
+use App\Livewire\Admin\Dashboard;
+use App\Livewire\Admin\EventManager;
+use App\Livewire\Admin\ImportManager;
+use App\Livewire\Admin\ProductManager;
+
+// Admin / Beheer - Nu tijdelijk zonder login
+Route::prefix('admin')->group(function () {
+    Route::get('/', Dashboard::class)->name('admin.dashboard');
+    Route::get('/producten', ProductManager::class)->name('admin.products');
+    Route::get('/categorieen', CategoryManager::class)->name('admin.categories');
+    Route::get('/events', EventManager::class)->name('admin.events');
+    Route::get('/import', ImportManager::class)->name('admin.import');
+});
+
+require __DIR__.'/auth.php';

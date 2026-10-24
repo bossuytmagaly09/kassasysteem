@@ -1,0 +1,362 @@
+<?php
+
+namespace Tests\Feature\Pos;
+
+use App\Livewire\Pos\Terminal;
+use App\Models\Card;
+use App\Models\Category;
+use App\Models\Event;
+use App\Models\Poef;
+use App\Models\Product;
+use App\PaymentMode;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+class TerminalTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Product $cola;
+
+    private Event $event;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $category = Category::create(['name' => 'Frisdrank', 'slug' => 'frisdrank']);
+
+        $this->cola = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Cola',
+            'price' => 200,
+        ]);
+
+        $this->event = Event::factory()->active()->create(['vak_price' => 100]);
+        $this->event->products()->attach($this->cola->id, ['price' => 250, 'stock_planned' => null]);
+    }
+
+    public function test_the_pos_page_renders_with_livewire_scripts(): void
+    {
+        $this->get(route('pos.index'))
+            ->assertOk()
+            ->assertSee('Cola')
+            ->assertSee('livewire', false);
+    }
+
+    public function test_without_active_event_a_message_is_shown(): void
+    {
+        $this->event->update(['is_active' => false]);
+
+        Livewire::test(Terminal::class)
+            ->assertSee('Geen actief event')
+            ->assertDontSee('Cola');
+    }
+
+    public function test_only_products_of_the_active_event_are_shown_at_event_price(): void
+    {
+        Product::create(['category_id' => $this->cola->category_id, 'name' => 'Fanta', 'price' => 200]);
+
+        Livewire::test(Terminal::class)
+            ->assertSee('Cola')
+            ->assertSee('€ 2,50')
+            ->assertDontSee('Fanta');
+    }
+
+    public function test_products_can_be_added_and_removed(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('addToOrder', $this->cola->id)
+            ->assertSet('orderItems.0.quantity', 2)
+            ->assertSee('€ 5,00')
+            ->call('removeOne', 0)
+            ->assertSet('orderItems.0.quantity', 1)
+            ->call('removeOne', 0)
+            ->assertSet('orderItems', []);
+    }
+
+    public function test_scanner_opens_scan_modal_and_annuleren_closes_it(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('startPayment')
+            ->assertSet('awaitingPayment', true)
+            ->assertSee('Wachten op kaart')
+            ->call('cancelPayment')
+            ->assertSet('awaitingPayment', false)
+            ->assertDontSee('Wachten op kaart')
+            ->assertSet('orderItems.0.quantity', 1);
+    }
+
+    public function test_scanner_does_nothing_with_an_empty_cart(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('startPayment')
+            ->assertSet('awaitingPayment', false);
+    }
+
+    public function test_scanning_any_card_pays_the_order_without_poef_link(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('addToOrder', $this->cola->id)
+            ->call('startPayment')
+            ->call('handleScan', 'CARD-123')
+            ->assertSet('awaitingPayment', false)
+            ->assertSet('paymentSuccess', true)
+            ->assertSet('orderItems', [])
+            ->assertSee('Betaald!')
+            ->call('closeSuccess')
+            ->assertSet('paymentSuccess', false);
+
+        $this->assertDatabaseHas('orders', [
+            'event_id' => $this->event->id,
+            'card_uid' => 'CARD-123',
+            'payment_method' => 'scanner',
+            'total_amount' => 500,
+        ]);
+        $this->assertDatabaseHas('order_items', ['product_name' => 'Cola', 'quantity' => 2, 'product_price' => 250]);
+    }
+
+    public function test_drankkaart_uses_vak_price_from_event(): void
+    {
+        $this->event->update(['vak_price' => 50]);
+
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('openDrankkaart')
+            ->assertSet('showDrankkaartModal', true)
+            ->assertSee('Drankkaart Afrekenen')
+            ->assertViewHas('vakjes', 5)
+            ->call('closeDrankkaart')
+            ->assertSet('showDrankkaartModal', false)
+            ->call('openDrankkaart')
+            ->call('completeDrankkaart')
+            ->assertSet('showDrankkaartModal', false)
+            ->assertSet('orderItems', []);
+
+        $this->assertDatabaseHas('orders', ['payment_method' => 'drankkaart', 'vakjes' => 5, 'total_amount' => 250]);
+    }
+
+    public function test_payment_buttons_follow_event_payment_mode(): void
+    {
+        $this->event->update(['payment_mode' => PaymentMode::Drankkaart]);
+
+        Livewire::test(Terminal::class)
+            ->assertSee('btn-drankkaart', false)
+            ->assertDontSee('btn-afrekenen', false)
+            ->call('addToOrder', $this->cola->id)
+            ->call('startPayment')
+            ->assertSet('awaitingPayment', false);
+
+        $this->event->update(['payment_mode' => PaymentMode::Scanner]);
+
+        Livewire::test(Terminal::class)
+            ->assertDontSee('btn-drankkaart', false)
+            ->assertSee('btn-afrekenen', false)
+            ->call('addToOrder', $this->cola->id)
+            ->call('openDrankkaart')
+            ->assertSet('showDrankkaartModal', false);
+    }
+
+    public function test_stock_limits_sales_and_marks_product_sold_out(): void
+    {
+        $this->event->products()->updateExistingPivot($this->cola->id, ['stock_planned' => 2]);
+
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('addToOrder', $this->cola->id)
+            ->call('addToOrder', $this->cola->id)
+            ->assertSet('orderItems.0.quantity', 2)
+            ->call('startPayment')
+            ->call('handleScan', 'CARD-1')
+            ->assertSee('UITVERKOCHT')
+            ->call('closeSuccess')
+            ->call('addToOrder', $this->cola->id)
+            ->assertSet('orderItems', []);
+    }
+
+    public function test_cart_cannot_change_while_a_modal_is_open(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('startPayment')
+            ->call('addToOrder', $this->cola->id)
+            ->assertSet('orderItems.0.quantity', 1);
+    }
+
+    public function test_drankkaart_can_be_purchased_at_event_card_price(): void
+    {
+        $this->event->update(['card_price' => 2500]); // € 25.00
+
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->assertSet('orderItems.0.name', 'Drankkaart')
+            ->assertSet('orderItems.0.price', 2500)
+            ->assertSet('orderItems.0.quantity', 1)
+            ->assertSee('€ 25,00')
+            ->call('addDrankkaart')
+            ->assertSet('orderItems.0.quantity', 2)
+            ->assertSee('€ 50,00');
+    }
+
+    public function test_drankkaart_can_be_purchased_together_with_drinks(): void
+    {
+        $this->event->update(['card_price' => 2000, 'vak_price' => 100]);
+
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->call('addToOrder', $this->cola->id)
+            ->assertCount('orderItems', 2)
+            ->assertSee('Contant / QR te ontvangen:')
+            ->assertSee('€ 20,00')
+            ->assertSee('(3 vakjes)');
+    }
+
+    public function test_drankkaart_with_drinks_can_be_completed_with_cash_and_records_vakjes(): void
+    {
+        $this->event->update(['card_price' => 2000, 'vak_price' => 100]);
+
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->call('addToOrder', $this->cola->id)
+            ->call('openCash')
+            ->assertSet('showCashModal', true)
+            ->call('setCashTendered', '20.00')
+            ->call('completeCash')
+            ->assertSet('showCashModal', false)
+            ->assertSet('paymentSuccess', true)
+            ->assertSet('lastPaymentMethod', 'cash')
+            ->assertSet('lastDrinksVakjes', 3);
+
+        $this->assertDatabaseHas('orders', [
+            'event_id' => $this->event->id,
+            'payment_method' => 'cash',
+            'total_amount' => 2000,
+            'vakjes' => 3,
+        ]);
+
+        $this->assertDatabaseHas('order_items', [
+            'product_name' => 'Drankkaart',
+            'product_price' => 2000,
+            'quantity' => 1,
+        ]);
+
+        $this->assertDatabaseHas('order_items', [
+            'product_name' => 'Cola',
+            'product_price' => 250,
+            'quantity' => 1,
+        ]);
+    }
+
+    public function test_cash_and_qr_are_only_available_when_drankkaart_is_in_cart(): void
+    {
+        // Only drinks in cart: cash and qr are NOT visible or operable
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->assertDontSee('btn-cash', false)
+            ->assertDontSee('btn-qr', false)
+            ->assertSee('btn-drankkaart', false)
+            ->call('openCash')
+            ->assertSet('showCashModal', false)
+            ->call('openQr')
+            ->assertSet('showQrModal', false);
+
+        // When a drankkaart is added: cash and qr become visible
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->assertSee('btn-cash', false)
+            ->assertSee('btn-qr', false)
+            ->assertDontSee('btn-drankkaart', false)
+            ->call('openCash')
+            ->assertSet('showCashModal', true);
+    }
+
+    public function test_drankkaart_order_can_be_paid_with_cash_and_calculates_change(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->call('openCash')
+            ->assertSet('showCashModal', true)
+            ->call('setCashTendered', '50.00')
+            ->call('completeCash')
+            ->assertSet('showCashModal', false)
+            ->assertSet('paymentSuccess', true)
+            ->assertSet('lastPaymentMethod', 'cash')
+            ->assertSet('lastCashChange', 3000) // € 50.00 - € 20.00 = € 30.00
+            ->assertSee('Wisselgeld: € 30,00');
+
+        $this->assertDatabaseHas('orders', [
+            'event_id' => $this->event->id,
+            'payment_method' => 'cash',
+            'total_amount' => 2000,
+        ]);
+    }
+
+    public function test_order_can_be_paid_with_qr_code(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->call('openQr')
+            ->assertSet('showQrModal', true)
+            ->call('completeQr')
+            ->assertSet('showQrModal', false)
+            ->assertSet('paymentSuccess', true)
+            ->assertSet('lastPaymentMethod', 'qr');
+
+        $this->assertDatabaseHas('orders', [
+            'event_id' => $this->event->id,
+            'payment_method' => 'qr',
+            'total_amount' => 2000,
+        ]);
+        $this->assertDatabaseHas('order_items', [
+            'product_id' => null,
+            'product_name' => 'Drankkaart',
+            'quantity' => 1,
+            'product_price' => 2000,
+        ]);
+    }
+
+    public function test_cart_with_drankkaart_cannot_be_paid_with_drankkaart(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->call('openDrankkaart')
+            ->assertSet('showDrankkaartModal', false)
+            ->assertSee('Een drankkaart kan enkel contant (Cash) of via QR betaald worden');
+    }
+
+    public function test_scanner_payment_associates_order_with_linked_poef(): void
+    {
+        $poef = Poef::create([
+            'external_id' => 999,
+            'name' => 'Charlotte Test',
+            'discount_percentage' => 0,
+        ]);
+
+        $card = Card::create([
+            'poef_id' => $poef->id,
+            'uid' => 'NFC-CHARLOTTE-1',
+            'card_type' => 'badge',
+            'status' => 'active',
+        ]);
+
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('startPayment')
+            ->call('handleScan', 'NFC-CHARLOTTE-1')
+            ->assertSet('paymentSuccess', true)
+            ->assertSet('scannedPoefName', 'Charlotte Test')
+            ->assertSee('Charlotte Test');
+
+        $this->assertDatabaseHas('orders', [
+            'event_id' => $this->event->id,
+            'poef_id' => $poef->id,
+            'card_id' => $card->id,
+            'card_uid' => 'NFC-CHARLOTTE-1',
+            'payment_method' => 'scanner',
+        ]);
+    }
+}
