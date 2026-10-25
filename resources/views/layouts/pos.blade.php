@@ -17,9 +17,9 @@
         <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 pointer-events-none"></div>
         <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-fuchsia-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 pointer-events-none"></div>
 
-        <!-- Top Navigation Bar (Responsive, zero overlapping, mathematically centered event title) -->
+        <!-- Top Navigation Bar (Responsive, in-flow centered between buttons and clock) -->
         <div x-data="nfcScanner()" class="h-16 border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-6 z-40 relative shadow-sm gap-4 shrink-0">
-            <div class="flex items-center gap-3 shrink-0 relative z-10">
+            <div class="flex items-center gap-3 shrink-0">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 rounded-xl transition-all text-slate-300 hover:text-white shrink-0" title="Hoofdmenu">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -48,24 +48,24 @@
                 </button>
             </div>
             
-            <!-- Mathematically Centered Event Name in Navbar (Exact 50% dead center of the screen) -->
+            <!-- In-flow Centered Event Name in Navbar (Right in the middle between buttons and clock) -->
             @php
                 $activeEvent = \App\Models\Event::active();
             @endphp
-            <div class="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 pointer-events-none text-center max-w-[36vw] sm:max-w-[44vw] z-0 flex items-center justify-center">
+            <div class="flex-1 min-w-0 flex items-center justify-center text-center px-4">
                 @if($activeEvent)
-                    <span class="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-200 to-fuchsia-300 tracking-wide drop-shadow-sm truncate block pointer-events-auto" title="{{ $activeEvent->name }}">
+                    <span class="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-200 to-fuchsia-300 tracking-wide drop-shadow-sm truncate" title="{{ $activeEvent->name }}">
                         {{ $activeEvent->name }}
                     </span>
                 @else
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs sm:text-sm font-bold tracking-wide pointer-events-auto">
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-sm font-bold tracking-wide">
                         <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
                         <span>Geen actief event</span>
                     </span>
                 @endif
             </div>
             
-            <div class="flex items-center gap-2 text-slate-400 font-medium text-sm shrink-0 relative z-10"
+            <div class="flex items-center gap-2 text-slate-400 font-medium text-sm shrink-0"
                  x-data="{ time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }"
                  x-init="setInterval(() => time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 1000)">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
