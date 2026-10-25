@@ -4,6 +4,7 @@ namespace App\Livewire\Pos;
 
 use App\Models\Card;
 use App\Models\Poef;
+use App\Services\BeheerApiService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -107,16 +108,29 @@ class KoppelPoef extends Component
             return;
         }
 
+        $cardHash = BeheerApiService::hashCardUid($cleanUid);
+
         // Link card in local database
         $card = Card::updateOrCreate(
             ['uid' => $cleanUid],
             [
                 'poef_id' => $poef->id,
+                'card_hash' => $cardHash,
+                'hangaar_user_id' => $poef->hangaar_user_id ?? $poef->external_id,
+                'drank_user_id' => $poef->drank_user_id,
                 'card_type' => $this->cardType,
                 'label' => trim($this->label) !== '' ? trim($this->label) : null,
                 'status' => 'active',
             ]
         );
+
+        // Send to Beheer API if token configured
+        try {
+            if (! empty(config('beheer.api_token')) && ($poef->hangaar_user_id || $poef->external_id)) {
+                app(BeheerApiService::class)->linkCard($cardHash, (int) ($poef->hangaar_user_id ?? $poef->external_id), replace: true);
+            }
+        } catch (\Throwable) {
+        }
 
         // Push directly to external drankdb if available
         $this->pushSingleCardToExternal($card, $poef);
@@ -134,7 +148,16 @@ class KoppelPoef extends Component
         }
 
         $uid = $card->uid;
+        $hash = $card->card_hash ?? ($uid ? BeheerApiService::hashCardUid($uid) : null);
         $card->delete();
+
+        // Also delete from Beheer if token configured
+        try {
+            if (! empty(config('beheer.api_token')) && $hash) {
+                app(BeheerApiService::class)->unlinkCard($hash);
+            }
+        } catch (\Throwable) {
+        }
 
         // Also delete from external database
         $this->removeCardFromExternal($uid);

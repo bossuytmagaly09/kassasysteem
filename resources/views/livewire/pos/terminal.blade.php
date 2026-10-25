@@ -448,6 +448,12 @@
                     @if($scannedPoefName)
                         <p class="text-2xl font-bold text-emerald-100">Geregistreerd op de poef van:</p>
                         <p class="text-3xl font-black text-indigo-300 mt-1">{{ $scannedPoefName }}</p>
+                        @if($lastPoefTotalSpent !== null)
+                            <div class="mt-3 inline-block bg-indigo-900/60 py-2 px-5 rounded-2xl border border-indigo-400/40 shadow-lg">
+                                <span class="text-xs uppercase tracking-wider text-slate-300 font-bold block">Totaal uitgegeven vanavond</span>
+                                <span class="text-2xl font-black text-emerald-300">€ {{ number_format($lastPoefTotalSpent / 100, 2, ',', '.') }}</span>
+                            </div>
+                        @endif
                     @else
                         <p class="text-xl text-emerald-200">Kaart gescand en geregistreerd.</p>
                     @endif

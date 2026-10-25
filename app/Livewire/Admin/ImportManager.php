@@ -2,41 +2,90 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Card;
+use App\Models\Order;
+use App\Models\Poef;
 use App\Models\Product;
-use Illuminate\Support\Facades\Artisan;
+use App\Services\BeheerApiService;
 use Livewire\Component;
 
 class ImportManager extends Component
 {
-    public $logs = [];
+    public array $logs = [];
 
-    public $isSyncing = false;
+    public bool $isSyncing = false;
 
-    public $productCount = 0;
+    public bool $isPushingSales = false;
 
-    public function sync()
+    public ?string $pingStatus = null;
+
+    public int $productCount = 0;
+
+    public int $peopleCount = 0;
+
+    public int $cardsCount = 0;
+
+    public int $pendingSalesCount = 0;
+
+    public function mount(): void
+    {
+        $this->refreshStats();
+    }
+
+    public function refreshStats(): void
+    {
+        $this->productCount = Product::count();
+        $this->peopleCount = Poef::count();
+        $this->cardsCount = Card::count();
+        $this->pendingSalesCount = Order::where('beheer_status', 'pending')->whereNotNull('uuid')->count();
+    }
+
+    public function checkConnection(BeheerApiService $service): void
+    {
+        try {
+            $result = $service->ping();
+            $this->pingStatus = 'Verbonden met Beheer ('.$result['service'].') om '.($result['time'] ?? now()->toTimeString());
+            $this->logs[] = '['.now()->format('H:i:s').'] ✓ Ping succesvol: '.$this->pingStatus;
+        } catch (\Throwable $e) {
+            $this->pingStatus = 'Fout: '.$e->getMessage();
+            $this->logs[] = '['.now()->format('H:i:s').'] ✗ Verbinding mislukt: '.$e->getMessage();
+        }
+    }
+
+    public function sync(BeheerApiService $service): void
     {
         $this->isSyncing = true;
-        $this->logs[] = '['.now()->format('H:i:s').'] Import gestart...';
+        $this->logs[] = '['.now()->format('H:i:s').'] Synchronisatie snapshot van beheer.tjeute.be gestart...';
 
         try {
-            Artisan::call('pos:sync-products');
-            $output = Artisan::output();
+            $result = $service->syncSnapshot();
+            foreach ($result['logs'] as $log) {
+                $this->logs[] = '['.now()->format('H:i:s').'] ✓ '.$log;
+            }
 
-            $this->logs[] = '['.now()->format('H:i:s').'] Verbinding met dranksite succesvol.';
-            $this->logs[] = '['.now()->format('H:i:s').'] Categorieën gesynchroniseerd.';
-            $this->logs[] = '['.now()->format('H:i:s').'] Producten en prijzen geüpdatet.';
-            $this->logs[] = '['.now()->format('H:i:s').'] '.$output;
-
-            $this->productCount = Product::count();
-            $this->logs[] = '['.now()->format('H:i:s').'] Totaal actieve producten nu in kassa: '.$this->productCount;
-            $this->logs[] = '['.now()->format('H:i:s').'] Import succesvol afgerond.';
-
-        } catch (\Exception $e) {
-            $this->logs[] = '['.now()->format('H:i:s').'] FOUT: Kon niet verbinden met dranksite database. Controleer de .env configuratie.';
+            $this->refreshStats();
+            $this->logs[] = '['.now()->format('H:i:s').'] Snapshot succesvol bijgewerkt.';
+        } catch (\Throwable $e) {
+            $this->logs[] = '['.now()->format('H:i:s').'] FOUT: '.$e->getMessage().' (Controleer BEHEER_API_TOKEN in .env)';
         }
 
         $this->isSyncing = false;
+    }
+
+    public function pushSales(BeheerApiService $service): void
+    {
+        $this->isPushingSales = true;
+        $this->logs[] = '['.now()->format('H:i:s').'] Doorsturen van openstaande verkopen gestart...';
+
+        try {
+            $result = $service->syncPendingSales();
+            $this->logs[] = '['.now()->format('H:i:s').'] '.($result['message'] ?? 'Verwerkt');
+            $this->refreshStats();
+        } catch (\Throwable $e) {
+            $this->logs[] = '['.now()->format('H:i:s').'] FOUT bij doorsturen: '.$e->getMessage();
+        }
+
+        $this->isPushingSales = false;
     }
 
     public function render()

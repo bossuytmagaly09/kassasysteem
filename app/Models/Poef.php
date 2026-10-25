@@ -9,9 +9,23 @@ class Poef extends Model
 {
     protected $fillable = [
         'external_id',
+        'hangaar_user_id',
+        'drank_user_id',
         'name',
+        'poef_name',
+        'has_poef',
         'discount_percentage',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'hangaar_user_id' => 'integer',
+            'drank_user_id' => 'integer',
+            'has_poef' => 'boolean',
+            'discount_percentage' => 'integer',
+        ];
+    }
 
     public function cards(): HasMany
     {

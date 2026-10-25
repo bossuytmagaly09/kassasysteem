@@ -1,0 +1,156 @@
+<?php
+
+namespace Tests\Feature\Beheer;
+
+use App\Models\Category;
+use App\Models\Event;
+use App\Models\Order;
+use App\Models\Poef;
+use App\Models\Product;
+use App\Services\BeheerApiService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
+
+class BeheerApiServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_card_hash_uid_matches_partner_specification(): void
+    {
+        // Example from kasa-api.md:
+        // UID 04:A2:3B:19 -> 04A23B19
+        // card_hash = lowercase_hex( HMAC_SHA256( key = CARD_HASH_SECRET, message = UID_in_hoofdletters_hex_zonder_scheidingstekens ) )
+        $secret = 'test-secret-key-123';
+        $uidWithColons = '04:a2:3b:19';
+
+        $expectedHash = hash_hmac('sha256', '04A23B19', $secret);
+
+        $computedHash = BeheerApiService::hashCardUid($uidWithColons, $secret);
+
+        $this->assertSame($expectedHash, $computedHash);
+        $this->assertSame(64, strlen($computedHash));
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $computedHash);
+    }
+
+    public function test_sync_snapshot_populates_events_products_people_and_cards(): void
+    {
+        config(['beheer.api_token' => 'dummy-token']);
+
+        Http::fake([
+            '*/events/open' => Http::response([
+                'data' => [
+                    [
+                        'id' => 12,
+                        'name' => 'Verjaardagsfeest',
+                        'event_date' => '2026-11-07',
+                        'punch_value' => 1.5,
+                        'items' => [
+                            ['id' => 40, 'kind' => 'punch_card', 'name' => 'Consumptiekaart', 'price' => 15.0, 'punch_cost' => null, 'punches' => 10, 'sort' => -1],
+                            ['id' => 41, 'kind' => 'consumption', 'name' => 'Cola', 'price' => 1.5, 'punch_cost' => 1, 'punches' => null, 'sort' => 0],
+                            ['id' => 42, 'kind' => 'consumption', 'name' => 'Rum-cola', 'price' => 3.0, 'punch_cost' => 2, 'punches' => null, 'sort' => 1],
+                        ],
+                    ],
+                ],
+            ]),
+            '*/people' => Http::response([
+                'data' => [
+                    ['hangaar_user_id' => 7, 'name' => 'Jonathan', 'drank_user_id' => 3, 'poef_name' => 'Jonathan / Febe', 'has_poef' => true],
+                ],
+            ]),
+            '*/cards' => Http::response([
+                'data' => [
+                    ['card_hash' => '9f2c111122223333444455556666777788889999aaaabbbbccccddddeeeeffff', 'hangaar_user_id' => 7, 'drank_user_id' => 3, 'name' => 'Jonathan'],
+                ],
+            ]),
+        ]);
+
+        $service = app(BeheerApiService::class);
+        $result = $service->syncSnapshot();
+
+        $this->assertTrue($result['success']);
+
+        // Assert event created
+        $this->assertDatabaseHas('events', [
+            'external_id' => 12,
+            'name' => 'Verjaardagsfeest',
+            'vak_price' => 150, // 1.5 euro = 150 cents
+            'card_price' => 1500, // 15 euro = 1500 cents
+        ]);
+
+        // Assert items created
+        $this->assertDatabaseHas('products', [
+            'external_id' => 41,
+            'name' => 'Cola',
+            'price' => 150,
+            'kind' => 'consumption',
+            'punch_cost' => 1,
+        ]);
+
+        // Assert poef / person created
+        $this->assertDatabaseHas('poefs', [
+            'hangaar_user_id' => 7,
+            'name' => 'Jonathan',
+            'poef_name' => 'Jonathan / Febe',
+        ]);
+
+        // Assert card created with hash
+        $this->assertDatabaseHas('cards', [
+            'card_hash' => '9f2c111122223333444455556666777788889999aaaabbbbccccddddeeeeffff',
+            'hangaar_user_id' => 7,
+        ]);
+    }
+
+    public function test_sync_pending_sales_sends_batch_and_updates_status(): void
+    {
+        config(['beheer.api_token' => 'dummy-token']);
+
+        $category = Category::create(['name' => 'Dranken', 'slug' => 'dranken']);
+        $product = Product::create([
+            'external_id' => 41,
+            'category_id' => $category->id,
+            'name' => 'Cola',
+            'price' => 150,
+        ]);
+
+        $event = Event::factory()->active()->create(['external_id' => 12]);
+        $order = Order::create([
+            'uuid' => '6f1d3c1e-5a0b-4a39-9a0b-2f6a0f1a9c11',
+            'event_id' => $event->id,
+            'total_amount' => 300,
+            'payment_method' => 'scanner',
+            'card_hash' => 'dummy_hash_64_characters_long_abcdef1234567890abcdef1234567890abcd',
+            'beheer_status' => 'pending',
+            'device' => 'kassa-1',
+        ]);
+
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_name' => 'Cola',
+            'product_price' => 150,
+            'quantity' => 2,
+        ]);
+
+        Http::fake([
+            '*/sales' => Http::response([
+                'data' => [
+                    [
+                        'uuid' => '6f1d3c1e-5a0b-4a39-9a0b-2f6a0f1a9c11',
+                        'status' => 'created',
+                        'sale_id' => 311,
+                    ],
+                ],
+            ]),
+        ]);
+
+        $service = app(BeheerApiService::class);
+        $result = $service->syncPendingSales();
+
+        $this->assertSame(1, $result['synced']);
+
+        $order->refresh();
+        $this->assertSame('synced', $order->beheer_status);
+        $this->assertSame(311, $order->beheer_sale_id);
+        $this->assertNotNull($order->synced_at);
+    }
+}

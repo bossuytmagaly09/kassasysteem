@@ -23,6 +23,7 @@ class Event extends Model
         'payment_mode',
         'vak_price',
         'card_price',
+        'punch_value',
         'is_active',
     ];
 
@@ -33,6 +34,7 @@ class Event extends Model
             'payment_mode' => PaymentMode::class,
             'vak_price' => 'integer',
             'card_price' => 'integer',
+            'punch_value' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }

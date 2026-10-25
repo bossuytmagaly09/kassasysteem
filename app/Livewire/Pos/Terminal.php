@@ -7,8 +7,11 @@ use App\Models\Category;
 use App\Models\Event;
 use App\Models\Order;
 use App\PaymentMode;
+use App\Services\BeheerApiService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -48,11 +51,14 @@ class Terminal extends Component
 
     public ?int $lastCardPricePaid = null;
 
+    public ?int $lastPoefTotalSpent = null;
+
     public string $paymentError = '';
 
     public function mount(): void
     {
         $this->activeCategoryId = $this->eventCategories()->first()?->id;
+        $this->broadcastCustomerDisplayState();
     }
 
     public function setCategory(int $categoryId): void
@@ -82,6 +88,7 @@ class Terminal extends Component
                 }
 
                 $this->orderItems[$index]['quantity']++;
+                $this->broadcastCustomerDisplayState();
 
                 return;
             }
@@ -98,6 +105,7 @@ class Terminal extends Component
             'price' => (int) $product->pivot->price,
             'quantity' => 1,
         ];
+        $this->broadcastCustomerDisplayState();
     }
 
     public function addDrankkaart(): void
@@ -116,6 +124,7 @@ class Terminal extends Component
         foreach ($this->orderItems as $index => $item) {
             if (($item['is_drankkaart'] ?? false)) {
                 $this->orderItems[$index]['quantity']++;
+                $this->broadcastCustomerDisplayState();
 
                 return;
             }
@@ -128,6 +137,7 @@ class Terminal extends Component
             'price' => $cardPrice,
             'quantity' => 1,
         ];
+        $this->broadcastCustomerDisplayState();
     }
 
     public function hasDrankkaartInCart(): bool
@@ -143,17 +153,20 @@ class Terminal extends Component
 
         if ($this->orderItems[$index]['quantity'] > 1) {
             $this->orderItems[$index]['quantity']--;
+            $this->broadcastCustomerDisplayState();
 
             return;
         }
 
         unset($this->orderItems[$index]);
         $this->orderItems = array_values($this->orderItems);
+        $this->broadcastCustomerDisplayState();
     }
 
     public function clearOrder(): void
     {
         $this->orderItems = [];
+        $this->broadcastCustomerDisplayState();
     }
 
     public function startPayment(): void
@@ -175,12 +188,14 @@ class Terminal extends Component
         $this->paymentSuccess = false;
         $this->paymentError = '';
         $this->awaitingPayment = true;
+        $this->broadcastCustomerDisplayState();
     }
 
     public function cancelPayment(): void
     {
         $this->awaitingPayment = false;
         $this->paymentError = '';
+        $this->broadcastCustomerDisplayState();
     }
 
     public function calculateCardTotal(): int
@@ -250,6 +265,7 @@ class Terminal extends Component
             $this->showCashModal = false;
         }
         $this->paymentError = '';
+        $this->broadcastCustomerDisplayState();
     }
 
     public function closeDrankkaartPurchase(): void
@@ -258,6 +274,7 @@ class Terminal extends Component
         $this->showCashModal = false;
         $this->showQrModal = false;
         $this->paymentError = '';
+        $this->broadcastCustomerDisplayState();
     }
 
     public function closeCash(): void
@@ -273,6 +290,7 @@ class Terminal extends Component
     public function setCashTendered(string $amount): void
     {
         $this->cashTendered = $amount;
+        $this->broadcastCustomerDisplayState();
     }
 
     public function completeDrankkaartPurchase(): void
@@ -304,6 +322,7 @@ class Terminal extends Component
         $this->lastDrinksVakjes = $drinksVakjes;
         $this->lastCardPricePaid = $cardTotal;
         $this->scannedPoefName = null;
+        $this->lastPoefTotalSpent = null;
 
         // Store order with vakjes if drinks were ordered; total monetary amount is the card purchase price
         $this->storeOrder(
@@ -313,11 +332,13 @@ class Terminal extends Component
             customTotal: $cardTotal,
         );
 
+        $this->showDrankkaartModal = false;
         $this->showDrankkaartPurchaseModal = false;
         $this->showCashModal = false;
         $this->showQrModal = false;
         $this->paymentError = '';
         $this->paymentSuccess = true;
+        $this->broadcastCustomerDisplayState('success');
     }
 
     public function completeCash(): void
@@ -351,19 +372,43 @@ class Terminal extends Component
             return;
         }
 
-        $card = Card::with('poef')->where('uid', $cardUid)->where('status', 'active')->first();
+        $cardHash = BeheerApiService::hashCardUid($cardUid);
+        $card = Card::with('poef')
+            ->where(function ($query) use ($cardUid, $cardHash): void {
+                $query->where('uid', $cardUid)
+                    ->orWhere('card_hash', $cardHash);
+            })
+            ->where('status', 'active')
+            ->first();
+
         $poef = $card?->poef;
 
-        $this->scannedPoefName = $poef?->name;
+        $this->scannedPoefName = $poef?->poef_name ?: $poef?->name;
         $this->lastPaymentMethod = 'scanner';
         $this->lastCashChange = null;
 
-        $this->storeOrder($event, PaymentMode::Scanner, cardUid: $cardUid, poefId: $poef?->id, cardId: $card?->id);
+        $this->storeOrder(
+            $event,
+            PaymentMode::Scanner,
+            cardUid: $cardUid,
+            poefId: $poef?->id,
+            cardId: $card?->id,
+            cardHash: $cardHash
+        );
+
+        if ($poef) {
+            $this->lastPoefTotalSpent = (int) Order::where('event_id', $event->id)
+                ->where('poef_id', $poef->id)
+                ->sum('total_amount');
+        } else {
+            $this->lastPoefTotalSpent = null;
+        }
 
         $this->awaitingPayment = false;
         $this->paymentError = '';
         $this->paymentSuccess = true;
 
+        $this->broadcastCustomerDisplayState('success');
         $this->dispatch('nfc-beep', success: true);
     }
 
@@ -375,6 +420,8 @@ class Terminal extends Component
         $this->lastCashChange = null;
         $this->lastDrinksVakjes = null;
         $this->lastCardPricePaid = null;
+        $this->lastPoefTotalSpent = null;
+        $this->broadcastCustomerDisplayState('idle');
     }
 
     public function openDrankkaart(): void
@@ -407,6 +454,8 @@ class Terminal extends Component
             $this->showCashModal = false;
             $this->showQrModal = false;
         }
+
+        $this->broadcastCustomerDisplayState();
     }
 
     public function closeDrankkaart(): void
@@ -416,6 +465,7 @@ class Terminal extends Component
         $this->showCashModal = false;
         $this->showQrModal = false;
         $this->paymentError = '';
+        $this->broadcastCustomerDisplayState();
     }
 
     public function completeDrankkaart(): void
@@ -436,20 +486,77 @@ class Terminal extends Component
         $this->lastCashChange = null;
         $this->lastDrinksVakjes = null;
         $this->scannedPoefName = null;
+        $this->lastPoefTotalSpent = null;
 
         $this->storeOrder($event, PaymentMode::Drankkaart, vakjes: $this->calculateVakjes($event, $this->calculateTotal()));
 
         $this->showDrankkaartModal = false;
         $this->paymentSuccess = true;
+        $this->broadcastCustomerDisplayState('success');
     }
 
-    private function storeOrder(Event $event, PaymentMode|string $method, ?string $cardUid = null, ?int $vakjes = null, ?int $poefId = null, ?int $cardId = null, ?int $customTotal = null): void
+    public function broadcastCustomerDisplayState(?string $stateOverride = null): void
+    {
+        $event = Event::active();
+
+        $state = $stateOverride ?? ($this->paymentSuccess
+            ? 'success'
+            : ($this->awaitingPayment
+                ? 'awaiting_payment'
+                : (! empty($this->orderItems) ? 'cart' : 'idle')));
+
+        $data = [
+            'state' => $state,
+            'event_name' => $event?->name ?? 'Kassa',
+            'vak_price' => $event?->vak_price ?? 100,
+            'items' => array_map(function (array $item) use ($event): array {
+                $price = (int) $item['price'];
+                $quantity = (int) $item['quantity'];
+                $vakPrice = max($event?->vak_price ?? 100, 1);
+                $isDrankkaart = (bool) ($item['is_drankkaart'] ?? false);
+                $vakjes = $isDrankkaart ? 0 : (int) ceil(($price * $quantity) / $vakPrice);
+
+                return [
+                    'name' => $item['name'],
+                    'quantity' => $quantity,
+                    'price' => $price,
+                    'total' => $price * $quantity,
+                    'is_drankkaart' => $isDrankkaart,
+                    'vakjes' => $vakjes,
+                ];
+            }, $this->orderItems),
+            'total' => $this->calculateTotal(),
+            'vakjes' => $event ? $this->calculateVakjes($event, $this->calculateTotal()) : 0,
+            'has_drankkaart' => $this->hasDrankkaartInCart(),
+            'card_total' => $this->calculateCardTotal(),
+            'drinks_total' => $this->calculateDrinksTotal(),
+            'drinks_vakjes' => $this->calculateDrinksVakjes(),
+            'card_payment_method' => $this->cardPaymentMethod,
+            'cash_tendered' => $this->cashTendered,
+            'awaiting_payment' => $this->awaitingPayment,
+            'last_payment_method' => $this->lastPaymentMethod,
+            'last_cash_change' => $this->lastCashChange,
+            'last_drinks_vakjes' => $this->lastDrinksVakjes,
+            'scanned_poef_name' => $this->scannedPoefName,
+            'poef_total_spent' => $this->lastPoefTotalSpent,
+            'updated_at' => microtime(true),
+        ];
+
+        Cache::put('pos_customer_display_state', $data, 3600);
+        $this->dispatch('pos-display-updated', state: $data);
+    }
+
+    private function storeOrder(Event $event, PaymentMode|string $method, ?string $cardUid = null, ?int $vakjes = null, ?int $poefId = null, ?int $cardId = null, ?int $customTotal = null, ?string $cardHash = null): void
     {
         $total = $customTotal ?? $this->calculateTotal();
         $methodValue = $method instanceof PaymentMode ? $method->value : (string) $method;
+        $orderUuid = (string) Str::uuid();
+        $cardHashValue = $cardHash ?? ($cardUid ? BeheerApiService::hashCardUid($cardUid) : null);
+        $device = (string) config('beheer.device_name', 'kassa-1');
 
-        DB::transaction(function () use ($event, $methodValue, $cardUid, $vakjes, $total, $poefId, $cardId): void {
+        DB::transaction(function () use ($event, $methodValue, $cardUid, $cardHashValue, $orderUuid, $device, $vakjes, $total, $poefId, $cardId): void {
             $order = Order::create([
+                'uuid' => $orderUuid,
                 'event_id' => $event->id,
                 'poef_id' => $poefId,
                 'card_id' => $cardId,
@@ -457,7 +564,10 @@ class Terminal extends Component
                 'status' => 'paid',
                 'payment_method' => $methodValue,
                 'card_uid' => $cardUid,
+                'card_hash' => $cardHashValue,
+                'device' => $device,
                 'vakjes' => $vakjes,
+                'beheer_status' => 'pending',
             ]);
 
             $order->items()->createMany(array_map(fn (array $item): array => [
@@ -469,6 +579,14 @@ class Terminal extends Component
         });
 
         $this->orderItems = [];
+
+        try {
+            if (! empty(config('beheer.api_token'))) {
+                app(BeheerApiService::class)->syncPendingSales();
+            }
+        } catch (\Throwable) {
+            // Background sync failure does not block the sale
+        }
     }
 
     private function calculateTotal(): int

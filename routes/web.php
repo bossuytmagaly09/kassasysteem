@@ -19,6 +19,12 @@ Route::middleware(['auth'])->group(function () {
 // POS Terminal - Nu tijdelijk zonder login
 Route::get('/pos', Terminal::class)->name('pos.index');
 
+// 2de Scherm / Klantenscherm (Customer Display)
+use App\Livewire\Pos\CustomerDisplay;
+
+Route::get('/klantenscherm', CustomerDisplay::class)->name('pos.display');
+Route::get('/display', CustomerDisplay::class);
+
 // Scanner / Cards - Nu tijdelijk zonder login
 Route::get('/scanner', CardManager::class)->name('scanner.index');
 

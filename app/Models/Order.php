@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Order extends Model
 {
     protected $fillable = [
+        'uuid',
         'event_id',
         'user_id',
         'poef_id',
@@ -17,14 +18,24 @@ class Order extends Model
         'status',
         'payment_method',
         'card_uid',
+        'card_hash',
+        'device',
         'vakjes',
+        'beheer_status',
+        'beheer_sale_id',
+        'beheer_error',
         'settled_at',
+        'synced_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'total_amount' => 'integer',
+            'vakjes' => 'integer',
+            'beheer_sale_id' => 'integer',
             'settled_at' => 'datetime',
+            'synced_at' => 'datetime',
         ];
     }
 
