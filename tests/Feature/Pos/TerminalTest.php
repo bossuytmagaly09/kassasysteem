@@ -363,4 +363,24 @@ class TerminalTest extends TestCase
             'payment_method' => 'scanner',
         ]);
     }
+
+    public function test_touchscreen_cash_numpad_manipulates_tendered_amount(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->call('openCash')
+            ->call('clearCashTendered')
+            ->assertSet('cashTendered', '')
+            ->call('appendCashDigit', '5')
+            ->call('appendCashDigit', '0')
+            ->assertSet('cashTendered', '50')
+            ->call('appendCashDigit', ',')
+            ->call('appendCashDigit', '5')
+            ->call('appendCashDigit', '0')
+            ->assertSet('cashTendered', '50,50')
+            ->call('backspaceCashTendered')
+            ->assertSet('cashTendered', '50,5')
+            ->call('clearCashTendered')
+            ->assertSet('cashTendered', '');
+    }
 }

@@ -6,6 +6,7 @@ use App\Livewire\Admin\EventManager;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Product;
+use App\PaymentMode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -280,5 +281,27 @@ class EventManagerTest extends TestCase
 
         $this->assertFalse($first->fresh()->is_active);
         $this->assertTrue($second->fresh()->is_active);
+    }
+
+    public function test_drankkaart_and_vak_prices_can_be_directly_updated_for_event(): void
+    {
+        $event = Event::factory()->create([
+            'payment_mode' => PaymentMode::Beide,
+            'card_price' => 2000,
+            'vak_price' => 100,
+        ]);
+
+        Livewire::test(EventManager::class)
+            ->call('selectEvent', $event->id)
+            ->assertSet('cardPrice', '20.00')
+            ->assertSet('vakPrice', '1.00')
+            ->set('cardPrice', '25.00')
+            ->set('vakPrice', '1.25')
+            ->call('updateEventPrices')
+            ->assertHasNoErrors()
+            ->assertSee('Prijzen voor drankkaart (€ 25,00) en vakje (€ 1,25) zijn succesvol bijgewerkt');
+
+        $this->assertEquals(2500, $event->fresh()->card_price);
+        $this->assertEquals(125, $event->fresh()->vak_price);
     }
 }

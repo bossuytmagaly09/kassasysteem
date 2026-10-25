@@ -111,6 +111,7 @@ class EventManager extends Component
         $this->ensureDefaultCategories();
         $this->categoryId = Category::query()->value('id');
         $this->selectedEventId = Event::active()?->id ?? Event::query()->latest()->value('id');
+        $this->syncSelectedEventPrices();
         $this->loadProductRows();
     }
 
@@ -119,8 +120,43 @@ class EventManager extends Component
         $this->selectedEventId = $eventId;
         $this->eventJustCreated = false;
         $this->feedbackMessage = '';
+        $this->syncSelectedEventPrices();
         $this->resetNewProductForm();
         $this->loadProductRows();
+    }
+
+    private function syncSelectedEventPrices(): void
+    {
+        if ($this->selectedEventId) {
+            $event = Event::find($this->selectedEventId);
+            if ($event) {
+                $this->vakPrice = number_format($event->vak_price / 100, 2, '.', '');
+                $this->cardPrice = $event->card_price ? number_format($event->card_price / 100, 2, '.', '') : '20.00';
+            }
+        }
+    }
+
+    public function updateEventPrices(): void
+    {
+        if (! $this->selectedEventId) {
+            return;
+        }
+
+        $validated = $this->validate([
+            'vakPrice' => ['required', 'numeric', 'min:0.01'],
+            'cardPrice' => ['required', 'numeric', 'min:0.50'],
+        ], [
+            'vakPrice.required' => 'Vul een waarde per vakje in.',
+            'cardPrice.required' => 'Vul een drankkaartprijs in.',
+        ]);
+
+        $event = Event::findOrFail($this->selectedEventId);
+        $event->update([
+            'vak_price' => (int) round(((float) str_replace(',', '.', $validated['vakPrice'])) * 100),
+            'card_price' => (int) round(((float) str_replace(',', '.', $validated['cardPrice'])) * 100),
+        ]);
+
+        $this->feedbackMessage = 'Prijzen voor drankkaart (€ '.number_format($event->card_price / 100, 2, ',', '.').') en vakje (€ '.number_format($event->vak_price / 100, 2, ',', '.').') zijn succesvol bijgewerkt!';
     }
 
     public function createEvent(): void

@@ -116,8 +116,11 @@
                             <div class="text-base font-bold text-slate-100 mt-1 truncate">{{ $selectedEvent->payment_mode->label() }}</div>
                         </div>
                         <div class="bg-slate-900/60 rounded-2xl p-4 border border-slate-700/50">
-                            <span class="text-xs uppercase tracking-wider text-slate-500 font-bold">Drankkaart vakje</span>
-                            <div class="text-xl font-black text-fuchsia-400 mt-1">€ {{ number_format($selectedEvent->vak_price / 100, 2, ',', '.') }}</div>
+                            <span class="text-xs uppercase tracking-wider text-slate-500 font-bold">Drankkaart / Vakje</span>
+                            <div class="text-lg font-black text-fuchsia-400 mt-1">
+                                € {{ number_format(($selectedEvent->card_price ?? 2000) / 100, 2, ',', '.') }}
+                                <span class="text-xs font-semibold text-slate-400">/ € {{ number_format($selectedEvent->vak_price / 100, 2, ',', '.') }}</span>
+                            </div>
                         </div>
                         <div class="bg-slate-900/60 rounded-2xl p-4 border border-slate-700/50">
                             <span class="text-xs uppercase tracking-wider text-slate-500 font-bold">Producten op kassa</span>
@@ -128,6 +131,54 @@
                             <div class="text-xl font-black text-emerald-400 mt-1">€ {{ number_format($revenue / 100, 2, ',', '.') }}</div>
                         </div>
                     </div>
+
+                    @if($selectedEvent->payment_mode->allowsDrankkaart())
+                        <!-- Drankkaart & Vakjes Prijzen Direct Aanpassen -->
+                        <div class="mt-6 p-5 rounded-2xl bg-gradient-to-r from-fuchsia-950/40 via-purple-950/30 to-slate-900/60 border border-fuchsia-500/40 shadow-lg">
+                            <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 flex items-center justify-center text-fuchsia-400">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-base font-bold text-white">Drankkaart & Vakjes Prijzen Aanpassen</h4>
+                                        <p class="text-xs text-slate-400">Pas direct de verkoopprijs van een drankkaart en de waarde per vakje aan voor dit event.</p>
+                                    </div>
+                                </div>
+                                <button type="button"
+                                        id="btn-update-prices"
+                                        wire:click="updateEventPrices"
+                                        class="px-5 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 active:scale-95 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-fuchsia-600/30 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Prijzen Opslaan</span>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label for="quick-card-price" class="block text-xs font-bold text-slate-300 mb-1">Prijs 1 Drankkaart (€)</label>
+                                    <div class="relative">
+                                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">€</span>
+                                        <input id="quick-card-price" type="number" step="0.50" min="0.50" wire:model="cardPrice" class="w-full bg-slate-900 border border-slate-700 focus:border-fuchsia-500 rounded-xl pl-8 pr-3 py-2 text-white font-bold">
+                                    </div>
+                                    @error('cardPrice') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label for="quick-vak-price" class="block text-xs font-bold text-slate-300 mb-1">Waarde per Vakje (€)</label>
+                                    <div class="relative">
+                                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">€</span>
+                                        <input id="quick-vak-price" type="number" step="0.05" min="0.01" wire:model="vakPrice" class="w-full bg-slate-900 border border-slate-700 focus:border-fuchsia-500 rounded-xl pl-8 pr-3 py-2 text-white font-bold">
+                                    </div>
+                                    @error('vakPrice') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 flex flex-col justify-center">
+                                    <span class="text-xs text-slate-400 font-medium">Berekend aantal vakjes:</span>
+                                    <span class="text-xl font-black text-fuchsia-300">
+                                        {{ ((float) str_replace(',', '.', $vakPrice) > 0) ? (int) round(((float) str_replace(',', '.', $cardPrice)) / ((float) str_replace(',', '.', $vakPrice))) : 0 }} vakjes per kaart
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <!-- Notification Banners -->

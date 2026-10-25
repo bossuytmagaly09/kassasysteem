@@ -293,6 +293,47 @@ class Terminal extends Component
         $this->broadcastCustomerDisplayState();
     }
 
+    public function appendCashDigit(string $digit): void
+    {
+        $current = trim($this->cashTendered);
+
+        if ($digit === ',' || $digit === '.') {
+            if (str_contains($current, '.') || str_contains($current, ',')) {
+                return;
+            }
+            $this->cashTendered = ($current === '' ? '0' : $current).',';
+            $this->broadcastCustomerDisplayState();
+
+            return;
+        }
+
+        if ($current === '0') {
+            $this->cashTendered = $digit;
+        } else {
+            if (preg_match('/[,.](\d{2})$/', $current)) {
+                return;
+            }
+            $this->cashTendered = $current.$digit;
+        }
+
+        $this->broadcastCustomerDisplayState();
+    }
+
+    public function clearCashTendered(): void
+    {
+        $this->cashTendered = '';
+        $this->broadcastCustomerDisplayState();
+    }
+
+    public function backspaceCashTendered(): void
+    {
+        $current = trim($this->cashTendered);
+        if ($current !== '') {
+            $this->cashTendered = mb_substr($current, 0, -1);
+        }
+        $this->broadcastCustomerDisplayState();
+    }
+
     public function completeDrankkaartPurchase(): void
     {
         $event = Event::active();

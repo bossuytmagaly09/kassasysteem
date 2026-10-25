@@ -13,7 +13,7 @@
         </div>
     @else
     <!-- Left Side: Categories and Products -->
-    <div class="w-2/3 flex flex-col bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-xl overflow-hidden">
+    <div class="flex-1 min-w-0 flex flex-col bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-xl overflow-hidden">
 
         <!-- Category Tabs & Quick Drankkaart -->
         <div class="flex p-4 gap-3 overflow-x-auto border-b border-slate-700/50 bg-slate-900/30 items-center justify-between">
@@ -46,14 +46,14 @@
 
         <!-- Product Grid -->
         <div class="flex-1 p-6 overflow-y-auto">
-            <div class="grid grid-cols-3 xl:grid-cols-4 gap-6">
+            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
                 @forelse($products as $product)
                     <button
                         type="button"
                         wire:key="product-{{ $product->id }}"
                         wire:click="addToOrder({{ $product->id }})"
                         @disabled($product->sold_out)
-                        class="group relative h-36 bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-2xl flex flex-col items-center justify-center hover:bg-indigo-900/40 hover:border-indigo-500/50 active:bg-indigo-600/60 active:scale-95 transition-all duration-150 overflow-hidden shadow-lg disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-800/50 disabled:hover:border-slate-600/50 disabled:active:scale-100">
+                        class="group relative min-h-[140px] p-4 bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-2xl flex flex-col items-center justify-center hover:bg-indigo-900/40 hover:border-indigo-500/50 active:bg-indigo-600/60 active:scale-95 transition-all duration-150 overflow-hidden shadow-lg disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-800/50 disabled:hover:border-slate-600/50 disabled:active:scale-100">
                         @if($product->remaining !== null)
                             <span class="absolute top-2 right-3 text-xs font-bold pointer-events-none {{ $product->sold_out ? 'text-red-400' : ($product->remaining <= 10 ? 'text-amber-400' : 'text-slate-500') }}">
                                 {{ $product->sold_out ? 'UITVERKOCHT' : $product->remaining.' over' }}
@@ -73,7 +73,7 @@
     </div>
 
     <!-- Right Side: Order Summary -->
-    <div class="w-1/3 min-w-[380px] max-w-[450px] flex flex-col bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl overflow-hidden relative">
+    <div class="w-96 lg:w-[420px] 2xl:w-[460px] shrink-0 flex flex-col bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl overflow-hidden relative">
 
         <!-- Header -->
         <div class="p-6 bg-slate-900/40 border-b border-slate-700/50 flex items-center justify-between">
@@ -227,29 +227,63 @@
 
                         @if($cardPaymentMethod === 'cash')
                             <div class="mt-3 pt-3 border-t border-slate-700/80">
-                                <label for="cash-tendered-input" class="block text-xs font-semibold text-slate-300 mb-1">Ontvangen bedrag (€):</label>
-                                <input id="cash-tendered-input"
-                                       type="number"
-                                       step="0.50"
-                                       wire:model.live.debounce.150ms="cashTendered"
-                                       class="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-2.5 text-center text-2xl font-bold text-white focus:outline-none focus:border-emerald-400">
+                                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ontvangen bedrag (€):</label>
+                                
+                                <!-- Touchscreen Display Box for Amount -->
+                                <div class="bg-slate-950 border-2 border-slate-700 focus-within:border-emerald-500 rounded-2xl p-3 flex items-center justify-between shadow-inner mb-3">
+                                    <span class="text-slate-400 font-bold text-2xl pl-2">€</span>
+                                    <div class="text-3xl font-black text-white font-mono tracking-wider text-right pr-2">
+                                        {{ $cashTendered !== '' ? str_replace('.', ',', $cashTendered) : '0,00' }}
+                                    </div>
+                                    <button type="button"
+                                            wire:click="clearCashTendered"
+                                            class="px-3 py-1.5 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 active:scale-95 rounded-xl border border-slate-600 transition-all">
+                                        Wissen
+                                    </button>
+                                </div>
 
-                                <!-- Quick Bill Buttons -->
-                                <div class="grid grid-cols-4 gap-2 mt-3">
+                                <!-- Quick Bill Buttons (Touch friendly) -->
+                                <div class="grid grid-cols-4 gap-2 mb-3">
                                     @php
                                         $cardEuro = $cardTotal / 100;
                                     @endphp
-                                    <button type="button" wire:click="setCashTendered('{{ number_format($cardEuro, 2, '.', '') }}')" class="py-2 bg-slate-700/70 hover:bg-slate-600 text-xs font-bold text-slate-200 rounded-lg transition-colors">
+                                    <button type="button"
+                                            wire:click="setCashTendered('{{ number_format($cardEuro, 2, '.', '') }}')"
+                                            class="py-2.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-xs font-bold text-indigo-200 rounded-xl transition-all active:scale-95">
                                         Pas (€ {{ number_format($cardEuro, 2, ',', '.') }})
                                     </button>
-                                    <button type="button" wire:click="setCashTendered('20.00')" class="py-2 bg-slate-700/70 hover:bg-slate-600 text-xs font-bold text-slate-200 rounded-lg transition-colors">
+                                    <button type="button"
+                                            wire:click="setCashTendered('20.00')"
+                                            class="py-2.5 bg-slate-700/80 hover:bg-slate-600 border border-slate-600/60 text-sm font-bold text-slate-100 rounded-xl transition-all active:scale-95">
                                         € 20
                                     </button>
-                                    <button type="button" wire:click="setCashTendered('50.00')" class="py-2 bg-slate-700/70 hover:bg-slate-600 text-xs font-bold text-slate-200 rounded-lg transition-colors">
+                                    <button type="button"
+                                            wire:click="setCashTendered('50.00')"
+                                            class="py-2.5 bg-slate-700/80 hover:bg-slate-600 border border-slate-600/60 text-sm font-bold text-slate-100 rounded-xl transition-all active:scale-95">
                                         € 50
                                     </button>
-                                    <button type="button" wire:click="setCashTendered('100.00')" class="py-2 bg-slate-700/70 hover:bg-slate-600 text-xs font-bold text-slate-200 rounded-lg transition-colors">
+                                    <button type="button"
+                                            wire:click="setCashTendered('100.00')"
+                                            class="py-2.5 bg-slate-700/80 hover:bg-slate-600 border border-slate-600/60 text-sm font-bold text-slate-100 rounded-xl transition-all active:scale-95">
                                         € 100
+                                    </button>
+                                </div>
+
+                                <!-- On-Screen Numeric Touch Keypad (No browser arrows, 100% touch friendly) -->
+                                <div class="grid grid-cols-3 gap-2 bg-slate-900/70 p-2.5 rounded-2xl border border-slate-700/60">
+                                    <button type="button" wire:click="appendCashDigit('7')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">7</button>
+                                    <button type="button" wire:click="appendCashDigit('8')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">8</button>
+                                    <button type="button" wire:click="appendCashDigit('9')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">9</button>
+                                    <button type="button" wire:click="appendCashDigit('4')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">4</button>
+                                    <button type="button" wire:click="appendCashDigit('5')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">5</button>
+                                    <button type="button" wire:click="appendCashDigit('6')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">6</button>
+                                    <button type="button" wire:click="appendCashDigit('1')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">1</button>
+                                    <button type="button" wire:click="appendCashDigit('2')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">2</button>
+                                    <button type="button" wire:click="appendCashDigit('3')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">3</button>
+                                    <button type="button" wire:click="appendCashDigit(',')" class="py-3 bg-slate-800/80 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-slate-300 rounded-xl shadow transition-all active:scale-95">,</button>
+                                    <button type="button" wire:click="appendCashDigit('0')" class="py-3 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-bold text-white rounded-xl shadow transition-all active:scale-95">0</button>
+                                    <button type="button" wire:click="backspaceCashTendered" class="py-3 bg-slate-800/80 hover:bg-red-900/40 text-red-400 rounded-xl shadow transition-all active:scale-95 flex items-center justify-center font-bold text-xl" title="Wissen">
+                                        ⌫
                                     </button>
                                 </div>
 
@@ -259,29 +293,28 @@
                                     $changeCents = max(0, $tenderedCents - $cardTotal);
                                 @endphp
                                 @if($tenderedCents >= $cardTotal)
-                                    <div class="mt-3 p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex justify-between items-center">
-                                        <span class="text-sm font-semibold text-emerald-300">Wisselgeld voor klant:</span>
+                                    <div class="mt-3 p-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex justify-between items-center shadow-lg">
+                                        <span class="text-sm font-bold text-emerald-300">Wisselgeld voor klant:</span>
                                         <span class="text-2xl font-black text-emerald-400">€ {{ number_format($changeCents / 100, 2, ',', '.') }}</span>
                                     </div>
                                 @endif
                             </div>
                         @else
-                            <!-- QR Code / Payconiq View -->
+                            <!-- QR Code / Payconiq / Bank App Flow -->
                             <div class="mt-3 pt-3 border-t border-slate-700/80 text-center">
-                                <div class="bg-white p-4 rounded-2xl max-w-[160px] mx-auto mb-3 shadow-lg flex items-center justify-center">
-                                    <div class="w-28 h-28 border-4 border-slate-900 rounded-xl p-2 flex flex-col justify-between">
-                                        <div class="flex justify-between">
-                                            <div class="w-6 h-6 bg-slate-900 rounded-sm"></div>
-                                            <div class="w-6 h-6 bg-slate-900 rounded-sm"></div>
-                                        </div>
-                                        <div class="text-slate-900 font-black text-[10px] tracking-widest text-center">PAYCONIQ</div>
-                                        <div class="flex justify-between items-end">
-                                            <div class="w-6 h-6 bg-slate-900 rounded-sm"></div>
-                                            <div class="w-5 h-5 bg-slate-900 rounded-sm"></div>
-                                        </div>
+                                <div class="bg-cyan-950/40 border border-cyan-500/30 rounded-2xl p-5 mb-3">
+                                    <div class="w-16 h-16 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 mx-auto mb-3">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                                    </div>
+                                    <p class="text-base font-bold text-cyan-200 mb-1">Betaling via Externe Telefoon / Payconiq</p>
+                                    <p class="text-xs text-slate-300">
+                                        Vraag de klant om <strong class="text-cyan-300 text-sm">€ {{ number_format($cardTotal / 100, 2, ',', '.') }}</strong> te betalen via de Payconiq of Bank app op de externe betaaltelefoon.
+                                    </p>
+                                    <div class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-900/50 border border-cyan-500/30 text-xs text-cyan-300 font-semibold">
+                                        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                                        Wordt gelogd als QR-betaling in het beheer
                                     </div>
                                 </div>
-                                <p class="text-xs text-slate-400">Laat de klant scannen voor <strong>€ {{ number_format($cardTotal / 100, 2, ',', '.') }}</strong>.</p>
                             </div>
                         @endif
                     </div>
@@ -321,7 +354,7 @@
                                 wire:click="completeDrankkaart"
                                 class="w-2/3 py-3.5 text-lg font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] rounded-xl transition-all shadow-[0_0_20px_-5px_rgba(16,185,129,0.5)] flex items-center justify-center gap-2">
                             <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span>{{ $drinksTotal > 0 ? 'Betaling Klaar & Vakjes Doorgestreept' : 'Bevestig Betaling' }}</span>
+                            <span>{{ $cardPaymentMethod === 'qr' ? 'Betaling Ontvangen & Registreren als QR' : ($drinksTotal > 0 ? 'Betaling Klaar & Vakjes Doorgestreept' : 'Bevestig Betaling') }}</span>
                         </button>
                     </div>
                 </div>

@@ -1,0 +1,304 @@
+<div>
+    @section('title', 'Verkopen & Bestellingen Log')
+
+    <!-- Top Filter Bar -->
+    <div class="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 shadow-xl mb-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h2 class="text-3xl font-black text-slate-100 tracking-tight flex items-center gap-3">
+                    <span class="p-2 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/40">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </span>
+                    Verkoop- & Bestellingenoverzicht
+                </h2>
+                <p class="text-slate-400 text-sm mt-1">
+                    Volledig realtime overzicht van alle verkochte dranken, drankkaarten en bestellingen per event en betaalmethode.
+                </p>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Event Selector -->
+                <div>
+                    <label for="filter-event" class="sr-only">Filter op event</label>
+                    <select id="filter-event" wire:model.live="selectedEventId" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2.5 font-bold focus:border-indigo-500 focus:outline-none">
+                        <option value="">Alle Events (Totaal)</option>
+                        @foreach($events as $event)
+                            <option value="{{ $event->id }}">
+                                {{ $event->name }} {{ $event->is_active ? '★ (Actief)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Payment Method Filter -->
+                <div>
+                    <label for="filter-payment" class="sr-only">Betaalmethode</label>
+                    <select id="filter-payment" wire:model.live="paymentMethodFilter" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-4 py-2.5 font-bold focus:border-indigo-500 focus:outline-none">
+                        <option value="">Alle Betaalmethodes</option>
+                        <option value="cash">Contant (Cash)</option>
+                        <option value="qr">QR Code (Payconiq)</option>
+                        <option value="drankkaart">Drankkaart (Vakjes)</option>
+                        <option value="scanner">NFC Scanner (Poef)</option>
+                    </select>
+                </div>
+
+                <!-- Search Input -->
+                <div class="relative">
+                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </span>
+                    <input type="text"
+                           wire:model.live.debounce.250ms="search"
+                           placeholder="Zoek product, klant of ID…"
+                           class="bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none w-56">
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
+            <!-- Total Revenue -->
+            <div class="bg-slate-900/70 rounded-2xl p-4 border border-emerald-500/30 shadow-lg">
+                <span class="text-xs uppercase tracking-wider text-emerald-400 font-bold block">Totale Omzet</span>
+                <div class="text-2xl font-black text-white mt-1">€ {{ number_format($totalRevenue / 100, 2, ',', '.') }}</div>
+                <span class="text-[11px] text-slate-400 mt-0.5 block">{{ $ordersCount }} bestellingen</span>
+            </div>
+
+            <!-- Drankkaarten Sold -->
+            <div class="bg-slate-900/70 rounded-2xl p-4 border border-fuchsia-500/30 shadow-lg">
+                <span class="text-xs uppercase tracking-wider text-fuchsia-400 font-bold block">Drankkaarten Verkocht</span>
+                <div class="text-2xl font-black text-fuchsia-300 mt-1">{{ $drankkaartenSold }} stuks</div>
+                <span class="text-[11px] text-slate-400 mt-0.5 block">€ {{ number_format($drankkaartenRevenue / 100, 2, ',', '.') }} omzet</span>
+            </div>
+
+            <!-- Cash Revenue -->
+            <div class="bg-slate-900/70 rounded-2xl p-4 border border-slate-700/50 shadow-lg">
+                <span class="text-xs uppercase tracking-wider text-emerald-400 font-bold block">💵 Contant (Cash)</span>
+                <div class="text-2xl font-black text-emerald-300 mt-1">€ {{ number_format($cashRevenue / 100, 2, ',', '.') }}</div>
+                <span class="text-[11px] text-slate-400 mt-0.5 block">{{ $cashCount }} transacties</span>
+            </div>
+
+            <!-- QR Code Revenue -->
+            <div class="bg-slate-900/70 rounded-2xl p-4 border border-cyan-500/30 shadow-lg">
+                <span class="text-xs uppercase tracking-wider text-cyan-400 font-bold block">📱 QR / Payconiq</span>
+                <div class="text-2xl font-black text-cyan-300 mt-1">€ {{ number_format($qrRevenue / 100, 2, ',', '.') }}</div>
+                <span class="text-[11px] text-slate-400 mt-0.5 block">{{ $qrCount }} transacties</span>
+            </div>
+
+            <!-- NFC Scanner / Poef -->
+            <div class="bg-slate-900/70 rounded-2xl p-4 border border-indigo-500/30 shadow-lg">
+                <span class="text-xs uppercase tracking-wider text-indigo-400 font-bold block">💳 Scanner / Poef</span>
+                <div class="text-2xl font-black text-indigo-300 mt-1">€ {{ number_format($scannerRevenue / 100, 2, ',', '.') }}</div>
+                <span class="text-[11px] text-slate-400 mt-0.5 block">{{ $scannerCount }} scans</span>
+            </div>
+
+            <!-- Drankkaart Punches -->
+            <div class="bg-slate-900/70 rounded-2xl p-4 border border-purple-500/30 shadow-lg">
+                <span class="text-xs uppercase tracking-wider text-purple-400 font-bold block">🎟️ Vakjes Doorgestreept</span>
+                <div class="text-2xl font-black text-purple-300 mt-1">{{ $drankkaartVakjes }} vakjes</div>
+                <span class="text-[11px] text-slate-400 mt-0.5 block">{{ $drankkaartCount }} drankkaart afrekeningen</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Buttons -->
+    <div class="flex items-center gap-3 mb-6">
+        <button type="button"
+                wire:click="setTab('items')"
+                class="px-6 py-3 rounded-2xl font-bold text-base transition-all flex items-center gap-2 border {{ $activeTab === 'items' ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-600/30' : 'bg-slate-800/60 text-slate-300 border-slate-700/60 hover:bg-slate-700' }}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+            <span>Verkoopoverzicht per Product & Drankkaart</span>
+            <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ $activeTab === 'items' ? 'bg-indigo-900/80 text-indigo-200' : 'bg-slate-700 text-slate-400' }}">
+                {{ count($productSales) }}
+            </span>
+        </button>
+
+        <button type="button"
+                wire:click="setTab('orders')"
+                class="px-6 py-3 rounded-2xl font-bold text-base transition-all flex items-center gap-2 border {{ $activeTab === 'orders' ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-600/30' : 'bg-slate-800/60 text-slate-300 border-slate-700/60 hover:bg-slate-700' }}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+            <span>Chronologische Bestellingen Log</span>
+            <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ $activeTab === 'orders' ? 'bg-indigo-900/80 text-indigo-200' : 'bg-slate-700 text-slate-400' }}">
+                {{ $orders->total() }}
+            </span>
+        </button>
+    </div>
+
+    <!-- TAB 1: Product Sales Overview -->
+    @if($activeTab === 'items')
+        <div class="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-xl overflow-hidden">
+            <div class="p-6 border-b border-slate-700/50 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-100">Overzicht van Alles wat Verkocht is</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Totaal aantal verkocht en gegenereerde omzet per artikel (inclusief drankkaarten).</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-900/60 text-xs uppercase font-bold text-slate-400 border-b border-slate-700/50">
+                        <tr>
+                            <th class="px-6 py-4">Product / Artikel</th>
+                            <th class="px-6 py-4">Categorie</th>
+                            <th class="px-6 py-4 text-right">Prijs per stuk</th>
+                            <th class="px-6 py-4 text-right">Aantal Verkocht</th>
+                            <th class="px-6 py-4 text-right">Totale Opbrengst</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/40">
+                        @forelse($productSales as $item)
+                            <tr class="hover:bg-slate-800/60 transition-colors {{ $item->product_name === 'Drankkaart' ? 'bg-fuchsia-950/20' : '' }}">
+                                <td class="px-6 py-4 font-bold text-white flex items-center gap-3">
+                                    @if($item->product_name === 'Drankkaart')
+                                        <span class="w-8 h-8 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 flex items-center justify-center text-fuchsia-400 text-base">
+                                            🎟️
+                                        </span>
+                                    @else
+                                        <span class="w-8 h-8 rounded-xl bg-slate-700/60 border border-slate-600/60 flex items-center justify-center text-slate-300 text-base">
+                                            📦
+                                        </span>
+                                    @endif
+                                    <div>
+                                        <span class="text-base text-slate-100">{{ $item->product_name }}</span>
+                                        @if($item->product_name === 'Drankkaart')
+                                            <span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40">Drankkaart</span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-700/40 border border-slate-600/50 text-slate-300">
+                                        {{ $item->category_name }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right font-semibold text-slate-200">
+                                    € {{ number_format($item->product_price / 100, 2, ',', '.') }}
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <span class="text-xl font-black text-indigo-300">{{ $item->total_quantity }}x</span>
+                                </td>
+                                <td class="px-6 py-4 text-right font-black text-lg text-emerald-400">
+                                    € {{ number_format($item->total_amount / 100, 2, ',', '.') }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-12 text-center text-slate-500">
+                                    Geen verkopen gevonden voor de geselecteerde filters.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
+    <!-- TAB 2: Orders Chronological Log -->
+    @if($activeTab === 'orders')
+        <div class="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-xl overflow-hidden">
+            <div class="p-6 border-b border-slate-700/50 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-100">Gedetailleerde Bestellingen Log</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Elke bestelling op datum, tijd, betaalwijze, gekoppelde poef en inhoud.</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-900/60 text-xs uppercase font-bold text-slate-400 border-b border-slate-700/50">
+                        <tr>
+                            <th class="px-6 py-4">Tijdstip</th>
+                            <th class="px-6 py-4">Event</th>
+                            <th class="px-6 py-4">Betaalmethode</th>
+                            <th class="px-6 py-4">Klant / Poef</th>
+                            <th class="px-6 py-4">Inhoud Bestelling</th>
+                            <th class="px-6 py-4 text-right">Vakjes</th>
+                            <th class="px-6 py-4 text-right">Totaalbedrag</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/40">
+                        @forelse($orders as $order)
+                            <tr class="hover:bg-slate-800/60 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-mono">
+                                    <div class="font-bold text-slate-200">{{ $order->created_at?->format('d/m/Y') }}</div>
+                                    <div>{{ $order->created_at?->format('H:i:s') }}</div>
+                                </td>
+                                <td class="px-6 py-4 font-semibold text-slate-300 whitespace-nowrap">
+                                    {{ $order->event?->name ?? 'Onbekend' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if($order->payment_method === 'cash')
+                                        <span class="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 w-max">
+                                            💵 Contant (Cash)
+                                        </span>
+                                    @elseif($order->payment_method === 'qr')
+                                        <span class="px-3 py-1 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center gap-1.5 w-max">
+                                            📱 QR Code
+                                        </span>
+                                    @elseif($order->payment_method === 'drankkaart')
+                                        <span class="px-3 py-1 rounded-xl text-xs font-bold bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40 flex items-center gap-1.5 w-max">
+                                            🎟️ Drankkaart
+                                        </span>
+                                    @elseif($order->payment_method === 'scanner')
+                                        <span class="px-3 py-1 rounded-xl text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 flex items-center gap-1.5 w-max">
+                                            💳 Scanner (NFC)
+                                        </span>
+                                    @else
+                                        <span class="px-3 py-1 rounded-xl text-xs font-bold bg-slate-700 text-slate-300">
+                                            {{ $order->payment_method }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-200">
+                                    @if($order->poef)
+                                        <span class="text-indigo-300 font-bold flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                            {{ $order->poef->name ?? $order->poef->poef_name }}
+                                        </span>
+                                    @else
+                                        <span class="text-slate-500 italic">Anoniem</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex flex-wrap gap-1.5 max-w-md">
+                                        @foreach($order->items as $item)
+                                            <span class="px-2.5 py-1 rounded-lg text-xs font-medium {{ $item->product_name === 'Drankkaart' ? 'bg-fuchsia-950/80 text-fuchsia-300 border border-fuchsia-500/40' : 'bg-slate-900/80 text-slate-300 border border-slate-700' }}">
+                                                {{ $item->quantity }}x {{ $item->product_name }}
+                                                <span class="text-slate-400 text-[11px]">(€ {{ number_format($item->product_price / 100, 2, ',', '.') }})</span>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-right whitespace-nowrap">
+                                    @if($order->vakjes)
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-black bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40">
+                                            {{ $order->vakjes }} vakjes
+                                        </span>
+                                    @else
+                                        <span class="text-slate-600">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 text-right font-black text-base text-emerald-400 whitespace-nowrap">
+                                    € {{ number_format($order->total_amount / 100, 2, ',', '.') }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                                    Geen bestellingen gevonden voor de geselecteerde filters.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            @if($orders->hasPages())
+                <div class="p-6 border-t border-slate-700/50">
+                    {{ $orders->links() }}
+                </div>
+            @endif
+        </div>
+    @endif
+</div>

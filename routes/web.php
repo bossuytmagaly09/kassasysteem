@@ -33,10 +33,12 @@ use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\EventManager;
 use App\Livewire\Admin\ImportManager;
 use App\Livewire\Admin\ProductManager;
+use App\Livewire\Admin\SalesLog;
 
 // Admin / Beheer - Nu tijdelijk zonder login
 Route::prefix('admin')->group(function () {
     Route::get('/', Dashboard::class)->name('admin.dashboard');
+    Route::get('/verkopen', SalesLog::class)->name('admin.sales');
     Route::get('/producten', ProductManager::class)->name('admin.products');
     Route::get('/categorieen', CategoryManager::class)->name('admin.categories');
     Route::get('/events', EventManager::class)->name('admin.events');
