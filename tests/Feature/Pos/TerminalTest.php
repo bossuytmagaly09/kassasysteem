@@ -210,9 +210,13 @@ class TerminalTest extends TestCase
             ->call('addDrankkaart')
             ->call('addToOrder', $this->cola->id)
             ->assertCount('orderItems', 2)
-            ->assertSee('Contant / QR te ontvangen:')
+            ->assertSee('€ 22,50')
+            ->call('openDrankkaart')
+            ->assertSet('showDrankkaartModal', true)
+            ->assertSee('Te betalen voor drankkaart:')
             ->assertSee('€ 20,00')
-            ->assertSee('(3 vakjes)');
+            ->assertSee('3')
+            ->assertSee('vakjes');
     }
 
     public function test_drankkaart_with_drinks_can_be_completed_with_cash_and_records_vakjes(): void
@@ -264,14 +268,14 @@ class TerminalTest extends TestCase
             ->call('openQr')
             ->assertSet('showQrModal', false);
 
-        // When a drankkaart is added: cash and qr become visible
+        // When a drankkaart is added: btn-drankkaart is present in sidebar, clicking it opens the popup with cash and qr
         Livewire::test(Terminal::class)
             ->call('addDrankkaart')
+            ->assertSee('btn-drankkaart', false)
+            ->call('openDrankkaart')
             ->assertSee('btn-cash', false)
             ->assertSee('btn-qr', false)
-            ->assertDontSee('btn-drankkaart', false)
-            ->call('openCash')
-            ->assertSet('showCashModal', true);
+            ->assertSet('showDrankkaartModal', true);
     }
 
     public function test_drankkaart_order_can_be_paid_with_cash_and_calculates_change(): void
@@ -319,13 +323,13 @@ class TerminalTest extends TestCase
         ]);
     }
 
-    public function test_cart_with_drankkaart_cannot_be_paid_with_drankkaart(): void
+    public function test_cart_with_drankkaart_cannot_be_paid_with_scanner(): void
     {
         Livewire::test(Terminal::class)
             ->call('addDrankkaart')
-            ->call('openDrankkaart')
-            ->assertSet('showDrankkaartModal', false)
-            ->assertSee('Een drankkaart kan enkel contant (Cash) of via QR betaald worden');
+            ->call('startPayment')
+            ->assertSet('awaitingPayment', false)
+            ->assertSee('Een drankkaart aankoop kan enkel via Drankkaart (Cash of QR) afgerekend worden');
     }
 
     public function test_scanner_payment_associates_order_with_linked_poef(): void

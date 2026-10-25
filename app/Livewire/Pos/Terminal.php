@@ -162,9 +162,16 @@ class Terminal extends Component
             return;
         }
 
+        if ($this->hasDrankkaartInCart()) {
+            $this->paymentError = 'Een drankkaart aankoop kan enkel via Drankkaart (Cash of QR) afgerekend worden.';
+
+            return;
+        }
+
         $this->showDrankkaartModal = false;
         $this->showCashModal = false;
         $this->showQrModal = false;
+        $this->showDrankkaartPurchaseModal = false;
         $this->paymentSuccess = false;
         $this->paymentError = '';
         $this->awaitingPayment = true;
@@ -214,13 +221,8 @@ class Terminal extends Component
         }
 
         $this->cardPaymentMethod = 'cash';
-        $this->cashTendered = number_format($this->calculateCardTotal() / 100, 2, '.', '');
-        $this->showDrankkaartPurchaseModal = true;
+        $this->openDrankkaart();
         $this->showCashModal = true;
-        $this->showQrModal = false;
-        $this->showDrankkaartModal = false;
-        $this->awaitingPayment = false;
-        $this->paymentError = '';
     }
 
     public function openQr(): void
@@ -230,19 +232,22 @@ class Terminal extends Component
         }
 
         $this->cardPaymentMethod = 'qr';
-        $this->showDrankkaartPurchaseModal = true;
+        $this->openDrankkaart();
         $this->showQrModal = true;
-        $this->showCashModal = false;
-        $this->showDrankkaartModal = false;
-        $this->awaitingPayment = false;
-        $this->paymentError = '';
     }
 
     public function setCardPaymentMethod(string $method): void
     {
         $this->cardPaymentMethod = $method;
-        if ($method === 'cash' && $this->cashTendered === '') {
-            $this->cashTendered = number_format($this->calculateCardTotal() / 100, 2, '.', '');
+        if ($method === 'cash') {
+            $this->showCashModal = true;
+            $this->showQrModal = false;
+            if ($this->cashTendered === '') {
+                $this->cashTendered = number_format($this->calculateCardTotal() / 100, 2, '.', '');
+            }
+        } elseif ($method === 'qr') {
+            $this->showQrModal = true;
+            $this->showCashModal = false;
         }
         $this->paymentError = '';
     }
@@ -378,25 +383,49 @@ class Terminal extends Component
             return;
         }
 
-        if ($this->hasDrankkaartInCart()) {
-            $this->paymentError = 'Een drankkaart kan enkel contant (Cash) of via QR betaald worden.';
-
-            return;
-        }
-
         $this->awaitingPayment = false;
-        $this->showCashModal = false;
-        $this->showQrModal = false;
+        $this->paymentError = '';
         $this->showDrankkaartModal = true;
+
+        if ($this->hasDrankkaartInCart()) {
+            $this->showDrankkaartPurchaseModal = true;
+            if (! in_array($this->cardPaymentMethod, ['cash', 'qr'])) {
+                $this->cardPaymentMethod = 'cash';
+            }
+            if ($this->cardPaymentMethod === 'cash') {
+                $this->showCashModal = true;
+                $this->showQrModal = false;
+            } else {
+                $this->showQrModal = true;
+                $this->showCashModal = false;
+            }
+            if ($this->cashTendered === '') {
+                $this->cashTendered = number_format($this->calculateCardTotal() / 100, 2, '.', '');
+            }
+        } else {
+            $this->showDrankkaartPurchaseModal = false;
+            $this->showCashModal = false;
+            $this->showQrModal = false;
+        }
     }
 
     public function closeDrankkaart(): void
     {
         $this->showDrankkaartModal = false;
+        $this->showDrankkaartPurchaseModal = false;
+        $this->showCashModal = false;
+        $this->showQrModal = false;
+        $this->paymentError = '';
     }
 
     public function completeDrankkaart(): void
     {
+        if ($this->hasDrankkaartInCart()) {
+            $this->completeDrankkaartPurchase();
+
+            return;
+        }
+
         $event = Event::active();
 
         if (empty($this->orderItems) || ! $event) {
@@ -405,11 +434,13 @@ class Terminal extends Component
 
         $this->lastPaymentMethod = 'drankkaart';
         $this->lastCashChange = null;
+        $this->lastDrinksVakjes = null;
         $this->scannedPoefName = null;
 
         $this->storeOrder($event, PaymentMode::Drankkaart, vakjes: $this->calculateVakjes($event, $this->calculateTotal()));
 
         $this->showDrankkaartModal = false;
+        $this->paymentSuccess = true;
     }
 
     private function storeOrder(Event $event, PaymentMode|string $method, ?string $cardUid = null, ?int $vakjes = null, ?int $poefId = null, ?int $cardId = null, ?int $customTotal = null): void
