@@ -147,28 +147,40 @@
             @endif
 
             <div class="flex gap-3">
-                @if($event->payment_mode->allowsDrankkaart())
+                @if($hasDrankkaart)
                 <button
                     type="button"
                     id="btn-drankkaart"
                     wire:click="openDrankkaart"
                     @disabled(empty($orderItems))
-                    class="flex-1 py-4 text-xl font-black text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 rounded-xl hover:from-fuchsia-500 hover:to-purple-500 active:scale-[0.98] transition-all shadow-[0_0_20px_-5px_rgba(192,38,211,0.5)] border border-fuchsia-400/50 flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
-                    <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
-                    <span>Consumptiekaart</span>
+                    class="w-full py-4 text-2xl font-black text-white bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 rounded-2xl hover:from-emerald-400 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-[0_0_30px_-5px_rgba(16,185,129,0.5)] border border-emerald-400/50 flex justify-center items-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
+                    <svg class="w-7 h-7 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span>Afrekenen</span>
                 </button>
-                @endif
+                @else
+                    @if($event->payment_mode->allowsDrankkaart())
+                    <button
+                        type="button"
+                        id="btn-drankkaart"
+                        wire:click="openDrankkaart"
+                        @disabled(empty($orderItems))
+                        class="flex-1 py-4 text-xl font-black text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 rounded-xl hover:from-fuchsia-500 hover:to-purple-500 active:scale-[0.98] transition-all shadow-[0_0_20px_-5px_rgba(192,38,211,0.5)] border border-fuchsia-400/50 flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
+                        <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                        <span>Consumptiekaart</span>
+                    </button>
+                    @endif
 
-                @if($event->payment_mode->allowsScanner())
-                <button
-                    type="button"
-                    id="btn-afrekenen"
-                    wire:click="startPayment"
-                    @disabled(empty($orderItems))
-                    class="flex-1 py-4 text-xl font-black text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl hover:from-emerald-400 hover:to-teal-400 active:scale-[0.98] transition-all shadow-[0_0_20px_-5px_rgba(16,185,129,0.5)] border border-emerald-400/50 flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
-                    <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-                    <span>Scanner</span>
-                </button>
+                    @if($event->payment_mode->allowsScanner())
+                    <button
+                        type="button"
+                        id="btn-afrekenen"
+                        wire:click="startPayment"
+                        @disabled(empty($orderItems))
+                        class="flex-1 py-4 text-xl font-black text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl hover:from-emerald-400 hover:to-teal-400 active:scale-[0.98] transition-all shadow-[0_0_20px_-5px_rgba(16,185,129,0.5)] border border-emerald-400/50 flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
+                        <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                        <span>Scanner</span>
+                    </button>
+                    @endif
                 @endif
             </div>
         </div>

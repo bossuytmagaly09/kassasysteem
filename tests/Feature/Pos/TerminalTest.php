@@ -430,4 +430,22 @@ class TerminalTest extends TestCase
             ->assertSet('scannedPoefInfoError', 'Onbekende kaart: niet gekoppeld aan een poef.')
             ->assertDispatched('nfc-beep', success: false);
     }
+
+    public function test_cart_with_consumptiekaart_replaces_two_buttons_with_single_afrekenen_button(): void
+    {
+        // 1. Without consumptiekaart: both Consumptiekaart and Scanner buttons exist
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->assertSee('Consumptiekaart')
+            ->assertSee('Scanner');
+
+        // 2. With consumptiekaart: both buttons are replaced by 1 single "Afrekenen" button
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->assertSee('Afrekenen')
+            ->assertDontSee('Scanner')
+            ->call('openDrankkaart')
+            ->assertSee('Contant (Cash)')
+            ->assertSee('QR Code');
+    }
 }
