@@ -102,21 +102,23 @@
                     wire:click="removeOne({{ $index }})"
                     class="w-full text-left relative flex justify-between items-center bg-slate-800/50 p-3.5 rounded-2xl border border-slate-700/60 hover:bg-red-900/40 hover:border-red-500/40 transition-colors group">
                     <div class="flex items-center gap-3 flex-1 min-w-0 pointer-events-none">
-                        <div class="w-9 h-9 rounded-xl {{ ($item['is_drankkaart'] ?? false) ? 'bg-fuchsia-600/30 text-fuchsia-300 border-fuchsia-500/40' : 'bg-indigo-600/30 text-indigo-300 border-indigo-500/40' }} flex items-center justify-center font-bold text-sm shrink-0 border group-hover:bg-red-500/20 group-hover:text-red-400 group-hover:border-red-500/40">
+                        <div class="w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] rounded-xl {{ ($item['is_drankkaart'] ?? false) ? 'bg-gradient-to-br from-fuchsia-600/30 to-purple-600/30 text-fuchsia-200 border-fuchsia-500/50' : 'bg-slate-700/60 text-slate-100 border-slate-600/70' }} flex items-center justify-center font-black text-sm shrink-0 border group-hover:bg-red-500/20 group-hover:text-red-400 group-hover:border-red-500/40 shadow-sm transition-colors">
                             {{ $item['quantity'] }}x
                         </div>
                         <div class="truncate pr-1">
                             <div class="font-bold text-white group-hover:text-red-200 transition-colors truncate text-base flex items-center gap-2">
                                 @if($item['is_drankkaart'] ?? false)
-                                    <span class="text-fuchsia-400 text-xs">🎟️</span>
+                                    <span class="w-5 h-5 rounded-md bg-fuchsia-500/20 border border-fuchsia-500/30 flex items-center justify-center text-fuchsia-300 shrink-0" title="Consumptiekaart">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                                    </span>
                                 @endif
                                 <span class="truncate">{{ preg_replace('/\s*\(.*?\)/', '', $item['name']) }}</span>
                             </div>
-                            <div class="text-xs text-slate-400">€ {{ number_format($item['price'] / 100, 2, ',', '.') }} p.s.</div>
+                            <div class="text-xs text-slate-400 whitespace-nowrap">€&nbsp;{{ number_format($item['price'] / 100, 2, ',', '.') }} p.s.</div>
                         </div>
                     </div>
-                    <div class="text-lg font-black text-emerald-400 shrink-0 pointer-events-none">
-                        € {{ number_format(($item['price'] * $item['quantity']) / 100, 2, ',', '.') }}
+                    <div class="text-lg font-black text-emerald-400 shrink-0 pointer-events-none whitespace-nowrap">
+                        €&nbsp;{{ number_format(($item['price'] * $item['quantity']) / 100, 2, ',', '.') }}
                     </div>
                 </button>
             @empty
@@ -239,12 +241,14 @@
                             
                             <!-- Left Column: Totals, Quick Bills & Wisselgeld -->
                             <div class="flex flex-col gap-2">
-                                <div class="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700 flex justify-between items-center">
-                                    <div>
-                                        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block">Te betalen voor consumptiekaart:</span>
-                                        <span class="text-xs text-slate-500">Consumptiekaart</span>
+                                <div class="bg-slate-800/80 rounded-xl p-3 border border-slate-700/80 flex justify-between items-center gap-3">
+                                    <div class="min-w-0">
+                                        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block truncate">Te betalen voor consumptiekaart:</span>
+                                        <span class="text-xs text-slate-400 font-medium truncate block">Consumptiekaart (vaste prijs)</span>
                                     </div>
-                                    <div class="text-2xl font-black text-emerald-400">€ {{ number_format($cardTotal / 100, 2, ',', '.') }}</div>
+                                    <div class="text-2xl font-black text-emerald-400 whitespace-nowrap shrink-0">
+                                        € {{ number_format($cardTotal / 100, 2, ',', '.') }}
+                                    </div>
                                 </div>
 
                                 <!-- Quick Bill Buttons -->
@@ -256,23 +260,23 @@
                                     <div class="grid grid-cols-2 gap-2">
                                         <button type="button"
                                                 wire:click="setCashTendered('{{ number_format($cardEuro, 2, '.', '') }}')"
-                                                class="py-2 px-1 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/50 text-xs font-bold text-indigo-200 rounded-lg transition-all active:scale-95 text-center">
-                                            Pas (€ {{ number_format($cardEuro, 2, ',', '.') }})
+                                                class="py-2.5 px-1 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/50 text-xs font-bold text-indigo-200 rounded-lg transition-all active:scale-95 text-center whitespace-nowrap flex items-center justify-center gap-1">
+                                            <span>Pas (€&nbsp;{{ number_format($cardEuro, 2, ',', '.') }})</span>
                                         </button>
                                         <button type="button"
                                                 wire:click="setCashTendered('20.00')"
-                                                class="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-bold text-white rounded-lg transition-all active:scale-95 text-center">
-                                            € 20
+                                                class="py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-bold text-white rounded-lg transition-all active:scale-95 text-center whitespace-nowrap flex items-center justify-center gap-1">
+                                            <span>€&nbsp;20</span>
                                         </button>
                                         <button type="button"
                                                 wire:click="setCashTendered('50.00')"
-                                                class="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-bold text-white rounded-lg transition-all active:scale-95 text-center">
-                                            € 50
+                                                class="py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-bold text-white rounded-lg transition-all active:scale-95 text-center whitespace-nowrap flex items-center justify-center gap-1">
+                                            <span>€&nbsp;50</span>
                                         </button>
                                         <button type="button"
                                                 wire:click="setCashTendered('100.00')"
-                                                class="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-bold text-white rounded-lg transition-all active:scale-95 text-center">
-                                            € 100
+                                                class="py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-bold text-white rounded-lg transition-all active:scale-95 text-center whitespace-nowrap flex items-center justify-center gap-1">
+                                            <span>€&nbsp;100</span>
                                         </button>
                                     </div>
                                 </div>
@@ -284,14 +288,18 @@
                                     $changeCents = max(0, $tenderedCents - $cardTotal);
                                 @endphp
                                 @if($tenderedCents >= $cardTotal)
-                                    <div class="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex justify-between items-center shadow-md">
-                                        <span class="text-xs uppercase tracking-wider font-bold text-emerald-300">Wisselgeld klant:</span>
-                                        <span class="text-2xl font-black text-emerald-400">€ {{ number_format($changeCents / 100, 2, ',', '.') }}</span>
+                                    <div class="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex justify-between items-center shadow-md gap-2">
+                                        <span class="text-xs uppercase tracking-wider font-bold text-emerald-300 truncate">Wisselgeld klant:</span>
+                                        <span class="text-2xl font-black text-emerald-400 whitespace-nowrap shrink-0 flex items-center tracking-tight">
+                                            <span class="mr-1">€</span><span>{{ number_format($changeCents / 100, 2, ',', '.') }}</span>
+                                        </span>
                                     </div>
                                 @else
-                                    <div class="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-400 flex justify-between items-center">
-                                        <span>Nog te ontvangen:</span>
-                                        <span class="font-bold text-amber-400 text-sm">€ {{ number_format(($cardTotal - $tenderedCents) / 100, 2, ',', '.') }}</span>
+                                    <div class="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-400 flex justify-between items-center gap-2">
+                                        <span class="truncate">Nog te ontvangen:</span>
+                                        <span class="font-bold text-amber-400 text-sm whitespace-nowrap shrink-0 flex items-center">
+                                            <span class="mr-1">€</span><span>{{ number_format(($cardTotal - $tenderedCents) / 100, 2, ',', '.') }}</span>
+                                        </span>
                                     </div>
                                 @endif
 
@@ -404,11 +412,15 @@
                     <div class="bg-slate-800 rounded-xl p-3.5 mb-3.5">
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-slate-300 text-sm">Totaalbedrag:</span>
-                            <span class="text-xl font-bold text-white">€ {{ number_format($total / 100, 2, ',', '.') }}</span>
+                            <span class="text-xl font-bold text-white whitespace-nowrap shrink-0 flex items-center">
+                                <span class="mr-1">€</span><span>{{ number_format($total / 100, 2, ',', '.') }}</span>
+                            </span>
                         </div>
                         <div class="flex justify-between items-center border-t border-slate-700 pt-2">
                             <span class="text-slate-300 text-sm">Waarde 1 vakje:</span>
-                            <span class="text-base font-bold text-fuchsia-300">€ {{ number_format($event->vak_price / 100, 2, ',', '.') }}</span>
+                            <span class="text-base font-bold text-fuchsia-300 whitespace-nowrap shrink-0 flex items-center">
+                                <span class="mr-1">€</span><span>{{ number_format($event->vak_price / 100, 2, ',', '.') }}</span>
+                            </span>
                         </div>
                     </div>
 

@@ -125,9 +125,9 @@
                 <!-- Left: Order Items List (7 cols) -->
                 <div class="col-span-7 flex flex-col bg-slate-900/60 border border-slate-800 rounded-2xl md:rounded-3xl p-4 md:p-5 backdrop-blur-xl shadow-2xl overflow-hidden">
                     <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 shrink-0">
-                        <h3 class="text-base md:text-lg font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <h3 class="text-base md:text-lg font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2.5">
                             <span>Uw Bestelling</span>
-                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold">
+                            <span class="text-xs px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 font-bold tracking-normal shadow-sm">
                                 {{ count($items) }} {{ count($items) === 1 ? 'artikel' : 'artikelen' }}
                             </span>
                         </h3>
@@ -138,29 +138,31 @@
                     <div class="flex-1 overflow-y-auto space-y-2 pr-1 [scrollbar-width:thin]">
                         @foreach($items as $item)
                             <div class="flex items-center justify-between p-2.5 md:p-3 rounded-xl bg-slate-800/40 border border-slate-700/50 hover:border-slate-600 transition-all">
-                                <div class="flex items-center gap-2.5 sm:gap-3">
-                                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-700/60 border border-slate-600 flex items-center justify-center text-base sm:text-lg font-black text-white shadow-sm shrink-0">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] rounded-xl {{ !empty($item['is_drankkaart']) ? 'bg-gradient-to-br from-fuchsia-600/30 to-purple-600/30 border border-fuchsia-500/40 text-fuchsia-200' : 'bg-slate-700/60 border border-slate-600 text-white' }} flex items-center justify-center text-sm sm:text-base font-black shadow-sm shrink-0">
                                         {{ $item['quantity'] }}x
                                     </div>
-                                    <div>
-                                        <h4 class="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-1.5">
-                                            <span>{{ $item['name'] }}</span>
+                                    <div class="min-w-0">
+                                        <h4 class="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2 truncate">
                                             @if(!empty($item['is_drankkaart']))
-                                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30">Kaart</span>
+                                                <span class="w-5 h-5 rounded-md bg-fuchsia-500/20 border border-fuchsia-500/30 flex items-center justify-center text-fuchsia-300 shrink-0" title="Consumptiekaart">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                                                </span>
                                             @endif
+                                            <span class="truncate">{{ $item['name'] }}</span>
                                         </h4>
-                                        <div class="text-xs text-slate-400 font-medium">
-                                            € {{ number_format($item['price'] / 100, 2, ',', '.') }} p.s.
+                                        <div class="text-xs text-slate-400 font-medium whitespace-nowrap">
+                                            €&nbsp;{{ number_format($item['price'] / 100, 2, ',', '.') }} p.s.
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="text-right">
-                                    <div class="text-lg sm:text-xl font-black text-white tracking-tight">
-                                        € {{ number_format($item['total'] / 100, 2, ',', '.') }}
+                                <div class="text-right shrink-0 ml-3">
+                                    <div class="text-lg sm:text-xl font-black text-white tracking-tight whitespace-nowrap">
+                                        €&nbsp;{{ number_format($item['total'] / 100, 2, ',', '.') }}
                                     </div>
                                     @if(empty($item['is_drankkaart']) && !empty($item['vakjes']))
-                                        <div class="text-xs font-bold text-fuchsia-400">
+                                        <div class="text-xs font-bold text-fuchsia-400 whitespace-nowrap">
                                             {{ $item['vakjes'] }} {{ $item['vakjes'] === 1 ? 'vakje' : 'vakjes' }}
                                         </div>
                                     @endif
