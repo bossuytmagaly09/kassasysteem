@@ -48,12 +48,18 @@
                 </button>
             </div>
             
-            <div class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-fuchsia-300">
-                Event POS
+            <!-- Centered Event Name Title -->
+            <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none">
+                <span class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-200 to-fuchsia-300 tracking-wide drop-shadow-sm truncate max-w-xs md:max-w-md lg:max-w-lg">
+                    {{ \App\Models\Event::active()?->name ?? 'Kassa' }}
+                </span>
             </div>
             
-            <div class="text-slate-400 font-medium">
-                {{ now()->format('H:i') }}
+            <div class="flex items-center gap-2.5 text-slate-400 font-medium text-sm"
+                 x-data="{ time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }"
+                 x-init="setInterval(() => time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 1000)">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span x-text="time">{{ now()->format('H:i') }}</span>
             </div>
         </div>
 

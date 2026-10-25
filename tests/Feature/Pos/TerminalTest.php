@@ -41,6 +41,7 @@ class TerminalTest extends TestCase
     {
         $this->get(route('pos.index'))
             ->assertOk()
+            ->assertSee($this->event->name)
             ->assertSee('Cola')
             ->assertSee('livewire', false);
     }
