@@ -410,19 +410,14 @@ class TerminalTest extends TestCase
             'vakjes' => 0,
         ]);
 
+        // Idle scan only broadcasts to customer display; kassa screen stays uninterrupted and no double beep
         Livewire::test(Terminal::class)
             ->assertSet('awaitingPayment', false)
             ->call('handleScan', 'NFC-KAREL-777')
-            ->assertSet('showPoefInfoModal', true)
+            ->assertSet('showPoefInfoModal', false)
             ->assertSet('scannedPoefInfoName', 'Karel De Grote')
             ->assertSet('scannedPoefInfoTotalSpent', 1850)
-            ->assertSee('Karel De Grote')
-            ->assertSee('€ 18,50')
-            ->assertDispatched('nfc-beep')
-            ->call('closePoefInfo')
-            ->assertSet('showPoefInfoModal', false)
-            ->assertSet('scannedPoefInfoName', null)
-            ->assertSet('scannedPoefInfoTotalSpent', null);
+            ->assertNotDispatched('nfc-beep');
     }
 
     public function test_idle_card_scan_with_unregistered_card_shows_unregistered_error(): void
@@ -430,11 +425,9 @@ class TerminalTest extends TestCase
         Livewire::test(Terminal::class)
             ->assertSet('awaitingPayment', false)
             ->call('handleScan', 'UNKNOWN-UID-999')
-            ->assertSet('showPoefInfoModal', true)
+            ->assertSet('showPoefInfoModal', false)
             ->assertSet('scannedPoefInfoName', null)
             ->assertSet('scannedPoefInfoError', 'Onbekende kaart: niet gekoppeld aan een poef.')
-            ->assertSee('Kaart Niet Gekoppeld')
-            ->call('closePoefInfo')
-            ->assertSet('showPoefInfoModal', false);
+            ->assertDispatched('nfc-beep', success: false);
     }
 }

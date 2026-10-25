@@ -72,7 +72,7 @@ export class NfcReader extends EventTarget {
 
     if (this.writer) {
       try {
-        await this.writer.write(ok ? 'O\n' : 'E\n');
+        await this.writer.write(ok ? 'O' : 'E');
       } catch (err) {
         console.warn('Beep error:', err);
       }

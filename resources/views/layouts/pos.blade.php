@@ -126,7 +126,11 @@
                     const success = (e.detail && typeof e.detail === 'object') 
                         ? (e.detail.success ?? (e.detail[0]?.success ?? true)) 
                         : true;
-                    window.__nfcReader.beep(success);
+                    // De scanner/Arduino hardware piept fysiek zelf al direct bij contact met de kaart.
+                    // Om een storende 2de pieptoon te voorkomen sturen we enkel bij fouten ('E') een extra piep.
+                    if (!success) {
+                        window.__nfcReader.beep(false);
+                    }
                 }
             });
         }

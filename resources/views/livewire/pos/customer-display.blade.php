@@ -373,13 +373,13 @@
                         Uw kaart is herkend op de kassa.
                     </p>
 
-                    <div class="w-full p-8 rounded-3xl bg-indigo-950/70 border-2 border-indigo-500/50 shadow-2xl backdrop-blur-xl mb-6 text-center">
-                        <span class="text-sm md:text-base font-bold uppercase tracking-wider text-slate-300 block mb-2">
+                    <div class="w-full p-8 rounded-3xl bg-slate-900/90 border-2 border-emerald-500/60 shadow-[0_0_50px_-10px_rgba(16,185,129,0.3)] backdrop-blur-xl mb-6 text-center">
+                        <span class="text-sm md:text-base font-bold uppercase tracking-wider text-slate-300 block mb-3">
                             Huidig saldo / Totaal uitgegeven vanavond:
                         </span>
-                        <span class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-300">
+                        <div class="text-6xl md:text-8xl font-black text-emerald-400 font-mono tracking-tight drop-shadow-[0_0_35px_rgba(52,211,153,0.6)]">
                             € {{ number_format(($poefTotalSpent ?? 0) / 100, 2, ',', '.') }}
-                        </span>
+                        </div>
                     </div>
 
                     <p class="text-xs text-slate-500">

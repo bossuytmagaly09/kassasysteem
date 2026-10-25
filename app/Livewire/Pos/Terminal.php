@@ -471,7 +471,6 @@ class Terminal extends Component
         $this->paymentSuccess = true;
 
         $this->broadcastCustomerDisplayState('success');
-        $this->dispatch('nfc-beep', success: true);
     }
 
     public function processSaldoCheckScan(string $cardUid): void
@@ -498,16 +497,15 @@ class Terminal extends Component
                 ->where('poef_id', $poef->id)
                 ->sum('total_amount');
             $this->scannedPoefInfoError = null;
-            $this->showPoefInfoModal = true;
+            $this->showPoefInfoModal = false;
 
-            $this->dispatch('nfc-beep', success: true);
-
+            // Broadcast enkel naar het klantenscherm; niet op de kassa en geen dubbele piep
             $this->broadcastPoefInfoDisplay($this->scannedPoefInfoName, $this->scannedPoefInfoTotalSpent);
         } else {
             $this->scannedPoefInfoName = null;
             $this->scannedPoefInfoTotalSpent = null;
             $this->scannedPoefInfoError = 'Onbekende kaart: niet gekoppeld aan een poef.';
-            $this->showPoefInfoModal = true;
+            $this->showPoefInfoModal = false;
 
             $this->dispatch('nfc-beep', success: false);
 
@@ -778,8 +776,7 @@ class Terminal extends Component
             || $this->showDrankkaartPurchaseModal
             || $this->showCashModal
             || $this->showQrModal
-            || $this->paymentSuccess
-            || $this->showPoefInfoModal;
+            || $this->paymentSuccess;
     }
 
     public function render(): View
