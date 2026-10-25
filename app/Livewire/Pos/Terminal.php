@@ -6,6 +6,7 @@ use App\Models\Card;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Order;
+use App\Models\Product;
 use App\PaymentMode;
 use App\Services\BeheerApiService;
 use Illuminate\Support\Collection;
@@ -89,6 +90,12 @@ class Terminal extends Component
             return;
         }
 
+        if ($product->kind === 'punch_card') {
+            $this->addDrankkaart();
+
+            return;
+        }
+
         $remaining = $this->remainingStock($event, $product->id, $product->pivot->stock_planned);
 
         foreach ($this->orderItems as $index => $item) {
@@ -118,6 +125,46 @@ class Terminal extends Component
         $this->broadcastCustomerDisplayState();
     }
 
+    private function resolvePunchCardProduct(Event $event): Product
+    {
+        $product = $event->products()->where('products.kind', 'punch_card')->first()
+            ?? Product::where('kind', 'punch_card')->first();
+
+        if (! $product) {
+            $category = Category::firstOrCreate(
+                ['slug' => 'dranken'],
+                ['name' => 'Dranken', 'is_active' => true]
+            );
+
+            $cardPrice = $event->card_price ?? 2000;
+            $product = Product::create([
+                'category_id' => $category->id,
+                'name' => 'Consumptiekaart',
+                'kind' => 'punch_card',
+                'price' => $cardPrice,
+                'is_active' => true,
+            ]);
+
+            $event->products()->syncWithoutDetaching([
+                $product->id => ['price' => $cardPrice],
+            ]);
+        }
+
+        return $product;
+    }
+
+    private function resolvePunchCardProductId(?Event $event): ?int
+    {
+        if ($event) {
+            $product = $event->products()->where('products.kind', 'punch_card')->first();
+            if ($product) {
+                return $product->id;
+            }
+        }
+
+        return Product::where('kind', 'punch_card')->first()?->id;
+    }
+
     public function addDrankkaart(): void
     {
         if ($this->isModalOpen()) {
@@ -129,10 +176,15 @@ class Terminal extends Component
             return;
         }
 
-        $cardPrice = $event->card_price ?? 2000;
+        $punchCardProduct = $this->resolvePunchCardProduct($event);
+        $cardPrice = $punchCardProduct->pivot?->price ?? $punchCardProduct->price ?? $event->card_price ?? 2000;
+        $cardName = $punchCardProduct->name ?: 'Consumptiekaart';
+        $cardProductId = $punchCardProduct->id;
 
         foreach ($this->orderItems as $index => $item) {
-            if (($item['is_drankkaart'] ?? false) || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])) {
+            if (($item['is_drankkaart'] ?? false)
+                || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])
+                || (($item['product_id'] ?? null) === $cardProductId)) {
                 $this->orderItems[$index]['quantity']++;
                 $this->broadcastCustomerDisplayState();
 
@@ -141,9 +193,9 @@ class Terminal extends Component
         }
 
         $this->orderItems[] = [
-            'product_id' => null,
+            'product_id' => $cardProductId,
             'is_drankkaart' => true,
-            'name' => 'Consumptiekaart',
+            'name' => $cardName,
             'price' => $cardPrice,
             'quantity' => 1,
         ];
@@ -152,8 +204,13 @@ class Terminal extends Component
 
     public function hasDrankkaartInCart(): bool
     {
-        return collect($this->orderItems)->contains(function ($item): bool {
-            return ! empty($item['is_drankkaart']) || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart']);
+        $event = Event::active();
+        $cardProductId = $event ? $this->resolvePunchCardProductId($event) : null;
+
+        return collect($this->orderItems)->contains(function ($item) use ($cardProductId): bool {
+            return ! empty($item['is_drankkaart'])
+                || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])
+                || ($cardProductId !== null && ($item['product_id'] ?? null) === $cardProductId);
         });
     }
 
@@ -212,16 +269,34 @@ class Terminal extends Component
 
     public function calculateCardTotal(): int
     {
+        $event = Event::active();
+        $cardProductId = $event ? $this->resolvePunchCardProductId($event) : null;
+
         return (int) array_sum(array_map(
-            fn (array $item): int => ($item['is_drankkaart'] ?? false) ? ($item['price'] * $item['quantity']) : 0,
+            function (array $item) use ($cardProductId): int {
+                $isCard = ($item['is_drankkaart'] ?? false)
+                    || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])
+                    || ($cardProductId !== null && ($item['product_id'] ?? null) === $cardProductId);
+
+                return $isCard ? ($item['price'] * $item['quantity']) : 0;
+            },
             $this->orderItems
         ));
     }
 
     public function calculateDrinksTotal(): int
     {
+        $event = Event::active();
+        $cardProductId = $event ? $this->resolvePunchCardProductId($event) : null;
+
         return (int) array_sum(array_map(
-            fn (array $item): int => ! ($item['is_drankkaart'] ?? false) ? ($item['price'] * $item['quantity']) : 0,
+            function (array $item) use ($cardProductId): int {
+                $isCard = ($item['is_drankkaart'] ?? false)
+                    || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])
+                    || ($cardProductId !== null && ($item['product_id'] ?? null) === $cardProductId);
+
+                return ! $isCard ? ($item['price'] * $item['quantity']) : 0;
+            },
             $this->orderItems
         ));
     }
@@ -391,13 +466,77 @@ class Terminal extends Component
         $this->scannedPoefName = null;
         $this->lastPoefTotalSpent = null;
 
-        // Store order with vakjes if drinks were ordered; total monetary amount is the card purchase price
-        $this->storeOrder(
-            $event,
-            $this->cardPaymentMethod,
-            vakjes: $drinksVakjes > 0 ? $drinksVakjes : null,
-            customTotal: $cardTotal,
-        );
+        // Partition cart items into card items and drink items
+        $cardProductId = $this->resolvePunchCardProductId($event);
+        $cardItems = [];
+        $drinkItems = [];
+
+        foreach ($this->orderItems as $item) {
+            $isCard = ! empty($item['is_drankkaart'])
+                || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])
+                || ($cardProductId !== null && ($item['product_id'] ?? null) === $cardProductId);
+
+            if ($isCard) {
+                $cardItems[] = $item;
+            } else {
+                $drinkItems[] = $item;
+            }
+        }
+
+        $device = (string) config('beheer.device_name', 'kassa-1');
+        $cardPaymentMethod = $this->cardPaymentMethod;
+
+        DB::transaction(function () use ($event, $cardItems, $drinkItems, $cardTotal, $drinksTotal, $drinksVakjes, $device, $cardPaymentMethod, $cardProductId): void {
+            // 1. Order for the consumptiekaart purchase (paid with cash or qr)
+            $cardOrder = Order::create([
+                'uuid' => (string) Str::uuid(),
+                'event_id' => $event->id,
+                'total_amount' => $cardTotal,
+                'status' => 'paid',
+                'payment_method' => $cardPaymentMethod,
+                'device' => $device,
+                'vakjes' => null,
+                'beheer_status' => 'pending',
+            ]);
+
+            $cardOrder->items()->createMany(array_map(fn (array $item): array => [
+                'product_id' => $item['product_id'] ?? $cardProductId,
+                'product_name' => $item['name'],
+                'product_price' => $item['price'],
+                'quantity' => $item['quantity'],
+            ], $cardItems));
+
+            // 2. Separate order for drinks (paid with punch_card), if drinks were in the cart
+            if (! empty($drinkItems)) {
+                $drinksOrder = Order::create([
+                    'uuid' => (string) Str::uuid(),
+                    'event_id' => $event->id,
+                    'total_amount' => $drinksTotal,
+                    'status' => 'paid',
+                    'payment_method' => PaymentMode::Drankkaart->value,
+                    'device' => $device,
+                    'vakjes' => $drinksVakjes,
+                    'beheer_status' => 'pending',
+                ]);
+
+                $drinksOrder->items()->createMany(array_map(fn (array $item): array => [
+                    'product_id' => $item['product_id'] ?? null,
+                    'product_name' => $item['name'],
+                    'product_price' => $item['price'],
+                    'quantity' => $item['quantity'],
+                ], $drinkItems));
+            }
+        });
+
+        $this->orderItems = [];
+
+        try {
+            if (! empty(config('beheer.api_token'))) {
+                app(BeheerApiService::class)->syncPendingSales();
+            }
+        } catch (\Throwable) {
+            // Background sync failure does not block the sale
+        }
 
         $this->showDrankkaartModal = false;
         $this->showDrankkaartPurchaseModal = false;
@@ -710,8 +849,9 @@ class Terminal extends Component
         $orderUuid = (string) Str::uuid();
         $cardHashValue = $cardHash ?? ($cardUid ? BeheerApiService::hashCardUid($cardUid) : null);
         $device = (string) config('beheer.device_name', 'kassa-1');
+        $cardProductId = $this->resolvePunchCardProductId($event);
 
-        DB::transaction(function () use ($event, $methodValue, $cardUid, $cardHashValue, $orderUuid, $device, $vakjes, $total, $poefId, $cardId): void {
+        DB::transaction(function () use ($event, $methodValue, $cardUid, $cardHashValue, $orderUuid, $device, $vakjes, $total, $poefId, $cardId, $cardProductId): void {
             $order = Order::create([
                 'uuid' => $orderUuid,
                 'event_id' => $event->id,
@@ -728,7 +868,7 @@ class Terminal extends Component
             ]);
 
             $order->items()->createMany(array_map(fn (array $item): array => [
-                'product_id' => $item['product_id'] ?? null,
+                'product_id' => $item['product_id'] ?? ((! empty($item['is_drankkaart']) || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])) ? $cardProductId : null),
                 'product_name' => $item['name'],
                 'product_price' => $item['price'],
                 'quantity' => $item['quantity'],
@@ -780,7 +920,13 @@ class Terminal extends Component
         }
 
         return Category::query()
-            ->whereIn('id', $event->products()->pluck('products.category_id'))
+            ->whereIn('id', $event->products()
+                ->where(function ($query): void {
+                    $query->whereNull('products.kind')
+                        ->orWhere('products.kind', '!=', 'punch_card');
+                })
+                ->pluck('products.category_id')
+            )
             ->get();
     }
 
@@ -811,6 +957,10 @@ class Terminal extends Component
 
             $products = $event->products()
                 ->where('products.category_id', $this->activeCategoryId)
+                ->where(function ($query): void {
+                    $query->whereNull('products.kind')
+                        ->orWhere('products.kind', '!=', 'punch_card');
+                })
                 ->orderBy('products.name')
                 ->get()
                 ->each(function ($product) use ($sold, $inCart): void {

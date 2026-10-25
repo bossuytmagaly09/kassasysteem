@@ -287,12 +287,32 @@ class BeheerApiService
             $lines = [];
             foreach ($order->items as $item) {
                 $externalItemId = $item->product?->external_id;
+
+                // Fallback for punch cards if not linked directly on order item
+                if (! $externalItemId) {
+                    if ($item->product?->kind === 'punch_card' || in_array($item->product_name, ['Consumptiekaart', 'Drankkaart'])) {
+                        $punchCard = $order->event?->products()->where('products.kind', 'punch_card')->first()
+                            ?? Product::where('kind', 'punch_card')->whereNotNull('external_id')->first();
+                        $externalItemId = $punchCard?->external_id;
+                    }
+                }
+
                 if ($externalItemId) {
                     $lines[] = [
                         'item_id' => (int) $externalItemId,
                         'quantity' => (int) $item->quantity,
                     ];
                 }
+            }
+
+            if (empty($lines)) {
+                Log::warning("Order {$order->uuid} heeft geen items met external_id en kan niet doorgestuurd worden naar Beheer.");
+                $order->update([
+                    'beheer_status' => 'rejected',
+                    'beheer_error' => 'Geen items met external_id gevonden voor Beheer verkoop.',
+                ]);
+
+                continue;
             }
 
             // Map payment method to Beheer specification:

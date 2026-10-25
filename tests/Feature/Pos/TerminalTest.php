@@ -6,6 +6,7 @@ use App\Livewire\Pos\Terminal;
 use App\Models\Card;
 use App\Models\Category;
 use App\Models\Event;
+use App\Models\Order;
 use App\Models\Poef;
 use App\Models\Product;
 use App\PaymentMode;
@@ -236,10 +237,19 @@ class TerminalTest extends TestCase
             ->assertSet('lastPaymentMethod', 'cash')
             ->assertSet('lastDrinksVakjes', 3);
 
+        // Split sale: 1. Card purchase order (cash)
         $this->assertDatabaseHas('orders', [
             'event_id' => $this->event->id,
             'payment_method' => 'cash',
             'total_amount' => 2000,
+            'vakjes' => null,
+        ]);
+
+        // Split sale: 2. Drinks order paid with punch_card
+        $this->assertDatabaseHas('orders', [
+            'event_id' => $this->event->id,
+            'payment_method' => 'drankkaart',
+            'total_amount' => 250,
             'vakjes' => 3,
         ]);
 
@@ -317,7 +327,6 @@ class TerminalTest extends TestCase
             'total_amount' => 2000,
         ]);
         $this->assertDatabaseHas('order_items', [
-            'product_id' => null,
             'product_name' => 'Consumptiekaart',
             'quantity' => 1,
             'product_price' => 2000,
@@ -461,5 +470,60 @@ class TerminalTest extends TestCase
             ->call('openDrankkaart')
             ->assertSee('Contant (Cash)')
             ->assertSee('QR Code');
+    }
+
+    public function test_punch_card_product_is_filtered_out_from_article_list(): void
+    {
+        // When Beheer sync creates a product with kind = 'punch_card', it should NOT appear in the drinks grid
+        $punchCard = Product::create([
+            'category_id' => $this->cola->category_id,
+            'name' => 'Consumptiekaart 10v',
+            'kind' => 'punch_card',
+            'price' => 2000,
+        ]);
+        $this->event->products()->attach($punchCard->id, ['price' => 2000, 'stock_planned' => null]);
+
+        Livewire::test(Terminal::class)
+            ->assertSee('Cola')
+            ->assertDontSee('Consumptiekaart 10v');
+    }
+
+    public function test_split_sales_generates_two_unique_uuids_and_links_card_product_id(): void
+    {
+        $punchCard = Product::create([
+            'external_id' => 99,
+            'category_id' => $this->cola->category_id,
+            'name' => 'Consumptiekaart',
+            'kind' => 'punch_card',
+            'price' => 2000,
+        ]);
+        $this->event->products()->attach($punchCard->id, ['price' => 2000, 'stock_planned' => null]);
+
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->call('addToOrder', $this->cola->id)
+            ->call('openCash')
+            ->call('setCashTendered', '20.00')
+            ->call('completeCash');
+
+        $orders = Order::latest('id')->take(2)->get();
+        $this->assertCount(2, $orders);
+
+        $cardOrder = $orders->firstWhere('payment_method', 'cash');
+        $drinksOrder = $orders->firstWhere('payment_method', 'drankkaart');
+
+        $this->assertNotNull($cardOrder);
+        $this->assertNotNull($drinksOrder);
+        $this->assertNotSame($cardOrder->uuid, $drinksOrder->uuid);
+
+        // Verify card order item has the punch card product_id
+        $cardItem = $cardOrder->items->first();
+        $this->assertSame($punchCard->id, $cardItem->product_id);
+        $this->assertSame(2000, $cardOrder->total_amount);
+
+        // Verify drinks order has Cola and 3 vakjes
+        $drinkItem = $drinksOrder->items->first();
+        $this->assertSame($this->cola->id, $drinkItem->product_id);
+        $this->assertSame(3, $drinksOrder->vakjes);
     }
 }

@@ -153,4 +153,62 @@ class BeheerApiServiceTest extends TestCase
         $this->assertSame(311, $order->beheer_sale_id);
         $this->assertNotNull($order->synced_at);
     }
+
+    public function test_sync_pending_sales_transmits_punch_card_sale_with_item_id_and_cash_method(): void
+    {
+        config(['beheer.api_token' => 'dummy-token']);
+
+        $category = Category::create(['name' => 'Dranken', 'slug' => 'dranken']);
+        $punchCard = Product::create([
+            'external_id' => 99,
+            'category_id' => $category->id,
+            'name' => 'Consumptiekaart',
+            'kind' => 'punch_card',
+            'price' => 2000,
+        ]);
+
+        $event = Event::factory()->active()->create(['external_id' => 12]);
+        $order = Order::create([
+            'uuid' => 'a1b2c3d4-e5f6-4a39-9a0b-2f6a0f1a9c22',
+            'event_id' => $event->id,
+            'total_amount' => 2000,
+            'payment_method' => 'cash',
+            'beheer_status' => 'pending',
+            'device' => 'kassa-1',
+        ]);
+
+        $order->items()->create([
+            'product_id' => $punchCard->id,
+            'product_name' => 'Consumptiekaart',
+            'product_price' => 2000,
+            'quantity' => 1,
+        ]);
+
+        Http::fake([
+            '*/sales' => function ($request) {
+                $payload = $request->data()['sales'][0] ?? [];
+                $this->assertSame('a1b2c3d4-e5f6-4a39-9a0b-2f6a0f1a9c22', $payload['uuid']);
+                $this->assertSame('cash', $payload['payment_method']);
+                $this->assertSame([['item_id' => 99, 'quantity' => 1]], $payload['lines']);
+
+                return Http::response([
+                    'data' => [
+                        [
+                            'uuid' => 'a1b2c3d4-e5f6-4a39-9a0b-2f6a0f1a9c22',
+                            'status' => 'created',
+                            'sale_id' => 777,
+                        ],
+                    ],
+                ]);
+            },
+        ]);
+
+        $service = app(BeheerApiService::class);
+        $result = $service->syncPendingSales();
+
+        $this->assertSame(1, $result['synced']);
+        $order->refresh();
+        $this->assertSame('synced', $order->beheer_status);
+        $this->assertSame(777, $order->beheer_sale_id);
+    }
 }
