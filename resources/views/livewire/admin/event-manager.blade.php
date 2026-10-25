@@ -116,7 +116,7 @@
                             <div class="text-base font-bold text-slate-100 mt-1 truncate">{{ $selectedEvent->payment_mode->label() }}</div>
                         </div>
                         <div class="bg-slate-900/60 rounded-2xl p-4 border border-slate-700/50">
-                            <span class="text-xs uppercase tracking-wider text-slate-500 font-bold">Drankkaart / Vakje</span>
+                            <span class="text-xs uppercase tracking-wider text-slate-500 font-bold">Consumptiekaart / Vakje</span>
                             <div class="text-lg font-black text-fuchsia-400 mt-1">
                                 € {{ number_format(($selectedEvent->card_price ?? 2000) / 100, 2, ',', '.') }}
                                 <span class="text-xs font-semibold text-slate-400">/ € {{ number_format($selectedEvent->vak_price / 100, 2, ',', '.') }}</span>
@@ -141,8 +141,8 @@
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
                                     </div>
                                     <div>
-                                        <h4 class="text-base font-bold text-white">Drankkaart & Vakjes Prijzen Aanpassen</h4>
-                                        <p class="text-xs text-slate-400">Pas direct de verkoopprijs van een drankkaart en de waarde per vakje aan voor dit event.</p>
+                                        <h4 class="text-base font-bold text-white">Consumptiekaart & Vakjes Prijzen Aanpassen</h4>
+                                        <p class="text-xs text-slate-400">Pas direct de verkoopprijs van een consumptiekaart en de waarde per vakje aan voor dit event.</p>
                                     </div>
                                 </div>
                                 <button type="button"
@@ -155,7 +155,7 @@
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
-                                    <label for="quick-card-price" class="block text-xs font-bold text-slate-300 mb-1">Prijs 1 Drankkaart (€)</label>
+                                    <label for="quick-card-price" class="block text-xs font-bold text-slate-300 mb-1">Prijs 1 Consumptiekaart (€)</label>
                                     <div class="relative">
                                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">€</span>
                                         <input id="quick-card-price" type="number" step="0.50" min="0.50" wire:model="cardPrice" class="w-full bg-slate-900 border border-slate-700 focus:border-fuchsia-500 rounded-xl pl-8 pr-3 py-2 text-white font-bold">
@@ -1060,7 +1060,7 @@
                     @if($paymentMode !== 'scanner')
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label for="event-card-price" class="{{ $label }}">Prijs drankkaart (€)</label>
+                            <label for="event-card-price" class="{{ $label }}">Prijs consumptiekaart (€)</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold pointer-events-none">€</span>
                                 <input id="event-card-price" type="number" step="0.50" min="0.50" wire:model="cardPrice" placeholder="20.00" class="{{ $input }} pl-8 font-bold text-fuchsia-400">
@@ -1071,7 +1071,7 @@
                                 <button type="button" wire:click="$set('cardPrice', '15.00')" class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">€ 15</button>
                                 <button type="button" wire:click="$set('cardPrice', '20.00')" class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">€ 20</button>
                             </div>
-                            <p class="text-xs text-slate-500 mt-1">Aankoopprijs volle drankkaart.</p>
+                            <p class="text-xs text-slate-500 mt-1">Aankoopprijs volle consumptiekaart.</p>
                             @error('cardPrice') <p class="text-red-400 text-xs mt-1 font-semibold">{{ $message }}</p> @enderror
                         </div>
                         <div>

@@ -128,7 +128,7 @@ class TerminalTest extends TestCase
             ->call('addToOrder', $this->cola->id)
             ->call('openDrankkaart')
             ->assertSet('showDrankkaartModal', true)
-            ->assertSee('Drankkaart Afrekenen')
+            ->assertSee('Consumptiekaart Afrekenen')
             ->assertViewHas('vakjes', 5)
             ->call('closeDrankkaart')
             ->assertSet('showDrankkaartModal', false)
@@ -193,7 +193,7 @@ class TerminalTest extends TestCase
 
         Livewire::test(Terminal::class)
             ->call('addDrankkaart')
-            ->assertSet('orderItems.0.name', 'Drankkaart')
+            ->assertSet('orderItems.0.name', 'Consumptiekaart')
             ->assertSet('orderItems.0.price', 2500)
             ->assertSet('orderItems.0.quantity', 1)
             ->assertSee('€ 25,00')
@@ -213,7 +213,7 @@ class TerminalTest extends TestCase
             ->assertSee('€ 22,50')
             ->call('openDrankkaart')
             ->assertSet('showDrankkaartModal', true)
-            ->assertSee('Te betalen voor drankkaart:')
+            ->assertSee('Te betalen voor consumptiekaart:')
             ->assertSee('€ 20,00')
             ->assertSee('3')
             ->assertSee('vakjes');
@@ -243,7 +243,7 @@ class TerminalTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('order_items', [
-            'product_name' => 'Drankkaart',
+            'product_name' => 'Consumptiekaart',
             'product_price' => 2000,
             'quantity' => 1,
         ]);
@@ -317,7 +317,7 @@ class TerminalTest extends TestCase
         ]);
         $this->assertDatabaseHas('order_items', [
             'product_id' => null,
-            'product_name' => 'Drankkaart',
+            'product_name' => 'Consumptiekaart',
             'quantity' => 1,
             'product_price' => 2000,
         ]);
@@ -329,7 +329,7 @@ class TerminalTest extends TestCase
             ->call('addDrankkaart')
             ->call('startPayment')
             ->assertSet('awaitingPayment', false)
-            ->assertSee('Een drankkaart aankoop kan enkel via Drankkaart (Cash of QR) afgerekend worden');
+            ->assertSee('Een consumptiekaart aankoop kan enkel via Consumptiekaart (Cash of QR) afgerekend worden');
     }
 
     public function test_scanner_payment_associates_order_with_linked_poef(): void
@@ -382,5 +382,58 @@ class TerminalTest extends TestCase
             ->assertSet('cashTendered', '50,5')
             ->call('clearCashTendered')
             ->assertSet('cashTendered', '');
+    }
+
+    public function test_idle_card_scan_without_transaction_displays_poef_name_and_saldo(): void
+    {
+        $poef = Poef::create([
+            'external_id' => 777,
+            'name' => 'Karel De Grote',
+            'discount_percentage' => 0,
+        ]);
+
+        $card = Card::create([
+            'poef_id' => $poef->id,
+            'uid' => 'NFC-KAREL-777',
+            'card_type' => 'badge',
+            'status' => 'active',
+        ]);
+
+        // Place a previous order of € 18.50 on this event
+        $this->event->orders()->create([
+            'poef_id' => $poef->id,
+            'card_id' => $card->id,
+            'card_uid' => 'NFC-KAREL-777',
+            'total_amount' => 1850,
+            'payment_method' => 'scanner',
+            'vakjes' => 0,
+        ]);
+
+        Livewire::test(Terminal::class)
+            ->assertSet('awaitingPayment', false)
+            ->call('handleScan', 'NFC-KAREL-777')
+            ->assertSet('showPoefInfoModal', true)
+            ->assertSet('scannedPoefInfoName', 'Karel De Grote')
+            ->assertSet('scannedPoefInfoTotalSpent', 1850)
+            ->assertSee('Karel De Grote')
+            ->assertSee('€ 18,50')
+            ->assertDispatched('nfc-beep')
+            ->call('closePoefInfo')
+            ->assertSet('showPoefInfoModal', false)
+            ->assertSet('scannedPoefInfoName', null)
+            ->assertSet('scannedPoefInfoTotalSpent', null);
+    }
+
+    public function test_idle_card_scan_with_unregistered_card_shows_unregistered_error(): void
+    {
+        Livewire::test(Terminal::class)
+            ->assertSet('awaitingPayment', false)
+            ->call('handleScan', 'UNKNOWN-UID-999')
+            ->assertSet('showPoefInfoModal', true)
+            ->assertSet('scannedPoefInfoName', null)
+            ->assertSet('scannedPoefInfoError', 'Onbekende kaart: niet gekoppeld aan een poef.')
+            ->assertSee('Kaart Niet Gekoppeld')
+            ->call('closePoefInfo')
+            ->assertSet('showPoefInfoModal', false);
     }
 }

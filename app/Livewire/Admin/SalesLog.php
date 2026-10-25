@@ -73,13 +73,13 @@ class SalesLog extends Component
         $drankkaartenSold = (int) OrderItem::query()
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->when($this->selectedEventId, fn ($q) => $q->where('orders.event_id', $this->selectedEventId))
-            ->where('order_items.product_name', 'Drankkaart')
+            ->whereIn('order_items.product_name', ['Consumptiekaart', 'Drankkaart'])
             ->sum('order_items.quantity');
 
         $drankkaartenRevenue = (int) (OrderItem::query()
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->when($this->selectedEventId, fn ($q) => $q->where('orders.event_id', $this->selectedEventId))
-            ->where('order_items.product_name', 'Drankkaart')
+            ->whereIn('order_items.product_name', ['Consumptiekaart', 'Drankkaart'])
             ->selectRaw('SUM(order_items.quantity * order_items.product_price) as total')
             ->value('total') ?? 0);
 
@@ -94,7 +94,7 @@ class SalesLog extends Component
             ->selectRaw('
                 order_items.product_name,
                 order_items.product_price,
-                COALESCE(categories.name, "Drankkaarten & Extra") as category_name,
+                COALESCE(categories.name, "Consumptiekaarten & Extra") as category_name,
                 SUM(order_items.quantity) as total_quantity,
                 SUM(order_items.quantity * order_items.product_price) as total_amount
             ')

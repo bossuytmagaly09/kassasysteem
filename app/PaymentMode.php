@@ -11,9 +11,9 @@ enum PaymentMode: string
     public function label(): string
     {
         return match ($this) {
-            self::Drankkaart => 'Enkel drankkaart',
+            self::Drankkaart => 'Enkel consumptiekaart',
             self::Scanner => 'Enkel kaartenscanner',
-            self::Beide => 'Drankkaart + scanner',
+            self::Beide => 'Consumptiekaart + scanner',
         };
     }
 

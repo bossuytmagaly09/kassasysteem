@@ -132,4 +132,29 @@ class CustomerDisplayTest extends TestCase
             ->assertSee('Huidig saldo / Totaal uitgegeven vanavond:')
             ->assertSee('€ 15,00');
     }
+
+    public function test_customer_display_idle_state_shows_consumptiekaart_price_box(): void
+    {
+        Cache::forget('pos_customer_display_state');
+
+        Livewire::test(CustomerDisplay::class)
+            ->assertSet('state', 'idle')
+            ->assertSee('Consumptiekaart')
+            ->assertSee('€ 20,00')
+            ->assertSee('20 vakjes');
+    }
+
+    public function test_customer_display_shows_poef_info_on_idle_scan(): void
+    {
+        // 1. Terminal receives idle card scan without an active cart
+        Livewire::test(Terminal::class)
+            ->call('handleScan', '04A23B19');
+
+        // 2. Customer display should show poef_info state
+        Livewire::test(CustomerDisplay::class)
+            ->assertSet('state', 'poef_info')
+            ->assertSet('scannedPoefName', 'Jonathan / Febe')
+            ->assertSee('Jonathan / Febe')
+            ->assertSee('Huidig saldo / Totaal uitgegeven vanavond:');
+    }
 }

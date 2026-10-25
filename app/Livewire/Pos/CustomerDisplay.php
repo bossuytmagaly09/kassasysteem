@@ -16,6 +16,8 @@ class CustomerDisplay extends Component
 
     public int $vakPrice = 100;
 
+    public int $cardPrice = 2000;
+
     public array $items = [];
 
     public int $total = 0;
@@ -44,6 +46,8 @@ class CustomerDisplay extends Component
 
     public ?int $poefTotalSpent = null;
 
+    public ?string $poefInfoError = null;
+
     public float $stateTimestamp = 0.0;
 
     public function mount(): void
@@ -65,6 +69,7 @@ class CustomerDisplay extends Component
             $this->state = 'idle';
             $this->eventName = $event?->name ?? 'Kassa';
             $this->vakPrice = $event?->vak_price ?? 100;
+            $this->cardPrice = $event?->card_price ?? 2000;
             $this->items = [];
             $this->total = 0;
             $this->vakjes = 0;
@@ -86,9 +91,20 @@ class CustomerDisplay extends Component
             return;
         }
 
+        // If in poef_info state and more than 7 seconds passed, automatically revert to idle
+        if (($cached['state'] ?? '') === 'poef_info' && ($now - $updatedAt) > 7.0) {
+            $this->state = 'idle';
+            $this->scannedPoefName = null;
+            $this->poefTotalSpent = null;
+            $this->poefInfoError = null;
+
+            return;
+        }
+
         $this->state = $cached['state'] ?? 'idle';
         $this->eventName = $cached['event_name'] ?? 'Kassa';
         $this->vakPrice = (int) ($cached['vak_price'] ?? 100);
+        $this->cardPrice = (int) ($cached['card_price'] ?? 2000);
         $this->items = (array) ($cached['items'] ?? []);
         $this->total = (int) ($cached['total'] ?? 0);
         $this->vakjes = (int) ($cached['vakjes'] ?? 0);
@@ -103,6 +119,7 @@ class CustomerDisplay extends Component
         $this->lastDrinksVakjes = isset($cached['last_drinks_vakjes']) ? (int) $cached['last_drinks_vakjes'] : null;
         $this->scannedPoefName = $cached['scanned_poef_name'] ?? null;
         $this->poefTotalSpent = isset($cached['poef_total_spent']) ? (int) $cached['poef_total_spent'] : null;
+        $this->poefInfoError = $cached['poef_info_error'] ?? null;
         $this->stateTimestamp = $updatedAt;
     }
 

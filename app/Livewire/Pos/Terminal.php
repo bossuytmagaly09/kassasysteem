@@ -43,6 +43,14 @@ class Terminal extends Component
 
     public ?string $scannedPoefName = null;
 
+    public ?string $scannedPoefInfoName = null;
+
+    public ?int $scannedPoefInfoTotalSpent = null;
+
+    public ?string $scannedPoefInfoError = null;
+
+    public bool $showPoefInfoModal = false;
+
     public ?string $lastPaymentMethod = null;
 
     public ?int $lastCashChange = null;
@@ -122,7 +130,7 @@ class Terminal extends Component
         $cardPrice = $event->card_price ?? 2000;
 
         foreach ($this->orderItems as $index => $item) {
-            if (($item['is_drankkaart'] ?? false)) {
+            if (($item['is_drankkaart'] ?? false) || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])) {
                 $this->orderItems[$index]['quantity']++;
                 $this->broadcastCustomerDisplayState();
 
@@ -133,7 +141,7 @@ class Terminal extends Component
         $this->orderItems[] = [
             'product_id' => null,
             'is_drankkaart' => true,
-            'name' => 'Drankkaart',
+            'name' => 'Consumptiekaart',
             'price' => $cardPrice,
             'quantity' => 1,
         ];
@@ -142,7 +150,9 @@ class Terminal extends Component
 
     public function hasDrankkaartInCart(): bool
     {
-        return collect($this->orderItems)->contains('is_drankkaart', true);
+        return collect($this->orderItems)->contains(function ($item): bool {
+            return ! empty($item['is_drankkaart']) || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart']);
+        });
     }
 
     public function removeOne(int $index): void
@@ -176,7 +186,7 @@ class Terminal extends Component
         }
 
         if ($this->hasDrankkaartInCart()) {
-            $this->paymentError = 'Een drankkaart aankoop kan enkel via Drankkaart (Cash of QR) afgerekend worden.';
+            $this->paymentError = 'Een consumptiekaart aankoop kan enkel via Consumptiekaart (Cash of QR) afgerekend worden.';
 
             return;
         }
@@ -395,19 +405,30 @@ class Terminal extends Component
     }
 
     /**
-     * Process a scanned NFC card. The card UID is stored on the order; poef is linked if card is registered.
+     * Process a scanned NFC card.
+     * When awaiting payment: completes the sale and links poef.
+     * When idle / no active checkout: performs a Saldo & Poef Check for the customer!
      */
     #[On('card-scanned')]
     public function handleScan(string $cardUid): void
     {
-        if (! $this->awaitingPayment) {
+        $cardUid = trim($cardUid);
+        if ($cardUid === '') {
             return;
         }
 
-        $cardUid = trim($cardUid);
+        if ($this->awaitingPayment) {
+            $this->processPaymentScan($cardUid);
+        } else {
+            $this->processSaldoCheckScan($cardUid);
+        }
+    }
+
+    private function processPaymentScan(string $cardUid): void
+    {
         $event = Event::active();
 
-        if ($cardUid === '' || empty($this->orderItems) || ! $event) {
+        if (empty($this->orderItems) || ! $event) {
             $this->dispatch('nfc-beep', success: false);
 
             return;
@@ -451,6 +472,87 @@ class Terminal extends Component
 
         $this->broadcastCustomerDisplayState('success');
         $this->dispatch('nfc-beep', success: true);
+    }
+
+    public function processSaldoCheckScan(string $cardUid): void
+    {
+        if ($this->paymentSuccess) {
+            return;
+        }
+
+        $event = Event::active();
+        $cardHash = BeheerApiService::hashCardUid($cardUid);
+
+        $card = Card::with('poef')
+            ->where(function ($query) use ($cardUid, $cardHash): void {
+                $query->where('uid', $cardUid)
+                    ->orWhere('card_hash', $cardHash);
+            })
+            ->where('status', 'active')
+            ->first();
+
+        if ($card && $card->poef) {
+            $poef = $card->poef;
+            $this->scannedPoefInfoName = $poef->poef_name ?: $poef->name;
+            $this->scannedPoefInfoTotalSpent = (int) Order::where('event_id', $event?->id)
+                ->where('poef_id', $poef->id)
+                ->sum('total_amount');
+            $this->scannedPoefInfoError = null;
+            $this->showPoefInfoModal = true;
+
+            $this->dispatch('nfc-beep', success: true);
+
+            $this->broadcastPoefInfoDisplay($this->scannedPoefInfoName, $this->scannedPoefInfoTotalSpent);
+        } else {
+            $this->scannedPoefInfoName = null;
+            $this->scannedPoefInfoTotalSpent = null;
+            $this->scannedPoefInfoError = 'Onbekende kaart: niet gekoppeld aan een poef.';
+            $this->showPoefInfoModal = true;
+
+            $this->dispatch('nfc-beep', success: false);
+
+            $this->broadcastPoefInfoDisplay(null, null, 'Kaart niet gekoppeld aan een poef.');
+        }
+    }
+
+    public function closePoefInfo(): void
+    {
+        $this->showPoefInfoModal = false;
+        $this->scannedPoefInfoName = null;
+        $this->scannedPoefInfoTotalSpent = null;
+        $this->scannedPoefInfoError = null;
+        $this->broadcastCustomerDisplayState('idle');
+    }
+
+    public function broadcastPoefInfoDisplay(?string $name, ?int $totalSpent, ?string $error = null): void
+    {
+        $event = Event::active();
+        $data = [
+            'state' => 'poef_info',
+            'event_name' => $event?->name ?? 'Kassa',
+            'vak_price' => $event?->vak_price ?? 100,
+            'card_price' => $event?->card_price ?? 2000,
+            'items' => [],
+            'total' => 0,
+            'vakjes' => 0,
+            'has_drankkaart' => false,
+            'card_total' => 0,
+            'drinks_total' => 0,
+            'drinks_vakjes' => 0,
+            'card_payment_method' => 'cash',
+            'cash_tendered' => '',
+            'awaiting_payment' => false,
+            'last_payment_method' => null,
+            'last_cash_change' => null,
+            'last_drinks_vakjes' => null,
+            'scanned_poef_name' => $name,
+            'poef_total_spent' => $totalSpent,
+            'poef_info_error' => $error,
+            'updated_at' => microtime(true),
+        ];
+
+        Cache::put('pos_customer_display_state', $data, 3600);
+        $this->dispatch('pos-display-updated', state: $data);
     }
 
     public function closeSuccess(): void
@@ -550,6 +652,7 @@ class Terminal extends Component
             'state' => $state,
             'event_name' => $event?->name ?? 'Kassa',
             'vak_price' => $event?->vak_price ?? 100,
+            'card_price' => $event?->card_price ?? 2000,
             'items' => array_map(function (array $item) use ($event): array {
                 $price = (int) $item['price'];
                 $quantity = (int) $item['quantity'];
@@ -675,7 +778,8 @@ class Terminal extends Component
             || $this->showDrankkaartPurchaseModal
             || $this->showCashModal
             || $this->showQrModal
-            || $this->paymentSuccess;
+            || $this->paymentSuccess
+            || $this->showPoefInfoModal;
     }
 
     public function render(): View

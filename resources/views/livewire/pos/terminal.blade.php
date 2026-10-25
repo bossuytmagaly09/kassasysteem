@@ -39,7 +39,7 @@
                     wire:click="addDrankkaart"
                     class="shrink-0 px-6 py-4 text-lg font-bold rounded-2xl whitespace-nowrap transition-all duration-200 border bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 border-fuchsia-400/50 text-white shadow-[0_0_20px_-5px_rgba(192,38,211,0.5)] flex items-center gap-2 active:scale-95">
                     <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
-                    <span>+ Drankkaart Kopen (€ {{ number_format(($event->card_price ?? 2000) / 100, 2, ',', '.') }})</span>
+                    <span>+ Consumptiekaart Kopen (€ {{ number_format(($event->card_price ?? 2000) / 100, 2, ',', '.') }})</span>
                 </button>
             @endif
         </div>
@@ -155,7 +155,7 @@
                     @disabled(empty($orderItems))
                     class="flex-1 py-4 text-xl font-black text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 rounded-xl hover:from-fuchsia-500 hover:to-purple-500 active:scale-[0.98] transition-all shadow-[0_0_20px_-5px_rgba(192,38,211,0.5)] border border-fuchsia-400/50 flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
                     <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
-                    <span>Drankkaart</span>
+                    <span>Consumptiekaart</span>
                 </button>
                 @endif
 
@@ -193,9 +193,9 @@
                             <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
                         </div>
                         <div>
-                            <h3 class="text-2xl font-black text-white">Drankkaart Afrekenen</h3>
+                            <h3 class="text-2xl font-black text-white">Consumptiekaart Afrekenen</h3>
                             <p class="text-xs text-slate-400">
-                                {{ $drinksTotal > 0 ? 'Betaal de kaart contant of via QR en streep de consumpties af.' : 'Ontvang betaling voor de aankoop van de drankkaart.' }}
+                                {{ $drinksTotal > 0 ? 'Betaal de kaart contant of via QR en streep de consumpties af.' : 'Ontvang betaling voor de aankoop van de consumptiekaart.' }}
                             </p>
                         </div>
                     </div>
@@ -221,7 +221,7 @@
                     <!-- Step 1: Pay the Drankkaart via Cash or QR -->
                     <div class="bg-slate-800/80 rounded-2xl p-5 mb-5 border border-slate-700">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-slate-400 text-sm font-medium">Te betalen voor drankkaart:</span>
+                            <span class="text-slate-400 text-sm font-medium">Te betalen voor consumptiekaart:</span>
                             <span class="text-3xl font-black text-emerald-400">€ {{ number_format($cardTotal / 100, 2, ',', '.') }}</span>
                         </div>
 
@@ -322,7 +322,7 @@
                     <!-- Step 2: Drinks to be crossed off on the new card (if any) -->
                     @if($drinksTotal > 0)
                         <div class="bg-fuchsia-950/40 border border-fuchsia-500/50 rounded-2xl p-5 mb-5 text-center shadow-lg">
-                            <p class="text-fuchsia-300 text-sm font-bold mb-1">Direct doorstrepen op de nieuwe drankkaart:</p>
+                            <p class="text-fuchsia-300 text-sm font-bold mb-1">Direct doorstrepen op de nieuwe consumptiekaart:</p>
                             <div class="text-5xl font-black text-fuchsia-400 flex justify-center items-center gap-3 my-2">
                                 <span>{{ $drinksVakjes }}</span>
                                 <span class="text-2xl font-bold text-fuchsia-300">vakjes</span>
@@ -337,7 +337,7 @@
                         </div>
                     @else
                         <div class="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-3 mb-5 text-center text-xs text-slate-400">
-                            Geen consumpties in bestelling: de klant koopt enkel de drankkaart (geen vakjes doorstrepen).
+                            Geen consumpties in bestelling: de klant koopt enkel de consumptiekaart (geen vakjes doorstrepen).
                         </div>
                     @endif
 
@@ -370,8 +370,8 @@
                         <svg class="w-8 h-8 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
 
-                    <h3 class="text-3xl font-black text-fuchsia-400 mb-2">Drankkaart Afrekenen</h3>
-                    <p class="text-slate-400 mb-6">Streep het aantal vakjes door op de drankkaart van de klant.</p>
+                    <h3 class="text-3xl font-black text-fuchsia-400 mb-2">Consumptiekaart Afrekenen</h3>
+                    <p class="text-slate-400 mb-6">Streep het aantal vakjes door op de consumptiekaart van de klant.</p>
 
                     <div class="bg-slate-800 rounded-2xl p-6 mb-6">
                         <div class="flex justify-between items-center mb-4">
@@ -496,10 +496,57 @@
 
                 @if($lastDrinksVakjes !== null && $lastDrinksVakjes > 0)
                     <div class="mt-4 p-3 bg-fuchsia-950/80 border border-fuchsia-500/50 rounded-2xl text-fuchsia-200 inline-block">
-                        <p class="text-xs uppercase tracking-wider text-fuchsia-300 font-bold">Drankkaart geactiveerd</p>
+                        <p class="text-xs uppercase tracking-wider text-fuchsia-300 font-bold">Consumptiekaart geactiveerd</p>
                         <p class="text-2xl font-black text-white mt-0.5">{{ $lastDrinksVakjes }} vakjes doorgestreept</p>
                     </div>
                 @endif
+            </div>
+        </div>
+    @endif
+
+    <!-- Poef Info Modal (Saldo Check without transaction) -->
+    @if($showPoefInfoModal)
+        <div wire:key="poef-info-modal"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm cursor-pointer"
+             x-data
+             x-init="setTimeout(() => $wire.closePoefInfo(), 6000)"
+             @keydown.escape.window="$wire.closePoefInfo()"
+             wire:click="closePoefInfo">
+            <div class="bg-slate-900 border border-indigo-500/50 p-8 rounded-3xl shadow-[0_0_50px_-10px_rgba(99,102,241,0.5)] max-w-md w-full relative text-center"
+                 @click.stop>
+                <button type="button" wire:click="closePoefInfo" class="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" title="Sluiten">
+                    <svg class="w-7 h-7 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+
+                @if($scannedPoefInfoError)
+                    <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center text-amber-400">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <h3 class="text-2xl font-black text-amber-300 mb-2">Kaart Niet Gekoppeld</h3>
+                    <p class="text-slate-300 text-sm mb-6">{{ $scannedPoefInfoError }}</p>
+                @else
+                    <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-indigo-500/20 border-2 border-indigo-500/50 flex items-center justify-center text-indigo-300">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    </div>
+                    <span class="inline-block px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-2">
+                        Poef Saldo Check
+                    </span>
+                    <h3 class="text-3xl font-black text-white mb-1">{{ $scannedPoefInfoName }}</h3>
+                    <p class="text-xs text-slate-400 mb-6">Gekoppelde klantrekening</p>
+
+                    <div class="bg-slate-950/70 border border-slate-700/80 rounded-2xl p-5 mb-6 text-center">
+                        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block mb-1">Totaal uitgegeven vanavond</span>
+                        <div class="text-4xl font-black text-emerald-400">
+                            € {{ number_format($scannedPoefInfoTotalSpent / 100, 2, ',', '.') }}
+                        </div>
+                    </div>
+                @endif
+
+                <button type="button"
+                        wire:click="closePoefInfo"
+                        class="w-full py-3 text-base font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/30">
+                    Sluiten
+                </button>
             </div>
         </div>
     @endif

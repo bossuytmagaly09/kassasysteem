@@ -67,7 +67,7 @@
 
             <!-- Drankkaarten Sold -->
             <div class="bg-slate-900/70 rounded-2xl p-4 border border-fuchsia-500/30 shadow-lg">
-                <span class="text-xs uppercase tracking-wider text-fuchsia-400 font-bold block">Drankkaarten Verkocht</span>
+                <span class="text-xs uppercase tracking-wider text-fuchsia-400 font-bold block">Consumptiekaarten Verkocht</span>
                 <div class="text-2xl font-black text-fuchsia-300 mt-1">{{ $drankkaartenSold }} stuks</div>
                 <span class="text-[11px] text-slate-400 mt-0.5 block">€ {{ number_format($drankkaartenRevenue / 100, 2, ',', '.') }} omzet</span>
             </div>
@@ -97,7 +97,7 @@
             <div class="bg-slate-900/70 rounded-2xl p-4 border border-purple-500/30 shadow-lg">
                 <span class="text-xs uppercase tracking-wider text-purple-400 font-bold block">🎟️ Vakjes Doorgestreept</span>
                 <div class="text-2xl font-black text-purple-300 mt-1">{{ $drankkaartVakjes }} vakjes</div>
-                <span class="text-[11px] text-slate-400 mt-0.5 block">{{ $drankkaartCount }} drankkaart afrekeningen</span>
+                <span class="text-[11px] text-slate-400 mt-0.5 block">{{ $drankkaartCount }} consumptiekaart afrekeningen</span>
             </div>
         </div>
     </div>
@@ -108,7 +108,7 @@
                 wire:click="setTab('items')"
                 class="px-6 py-3 rounded-2xl font-bold text-base transition-all flex items-center gap-2 border {{ $activeTab === 'items' ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-600/30' : 'bg-slate-800/60 text-slate-300 border-slate-700/60 hover:bg-slate-700' }}">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-            <span>Verkoopoverzicht per Product & Drankkaart</span>
+            <span>Verkoopoverzicht per Product & Consumptiekaart</span>
             <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ $activeTab === 'items' ? 'bg-indigo-900/80 text-indigo-200' : 'bg-slate-700 text-slate-400' }}">
                 {{ count($productSales) }}
             </span>
@@ -131,7 +131,7 @@
             <div class="p-6 border-b border-slate-700/50 flex items-center justify-between">
                 <div>
                     <h3 class="text-xl font-bold text-slate-100">Overzicht van Alles wat Verkocht is</h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Totaal aantal verkocht en gegenereerde omzet per artikel (inclusief drankkaarten).</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Totaal aantal verkocht en gegenereerde omzet per artikel (inclusief consumptiekaarten).</p>
                 </div>
             </div>
 
@@ -148,9 +148,9 @@
                     </thead>
                     <tbody class="divide-y divide-slate-700/40">
                         @forelse($productSales as $item)
-                            <tr class="hover:bg-slate-800/60 transition-colors {{ $item->product_name === 'Drankkaart' ? 'bg-fuchsia-950/20' : '' }}">
+                            <tr class="hover:bg-slate-800/60 transition-colors {{ in_array($item->product_name, ['Consumptiekaart', 'Drankkaart']) ? 'bg-fuchsia-950/20' : '' }}">
                                 <td class="px-6 py-4 font-bold text-white flex items-center gap-3">
-                                    @if($item->product_name === 'Drankkaart')
+                                    @if(in_array($item->product_name, ['Consumptiekaart', 'Drankkaart']))
                                         <span class="w-8 h-8 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 flex items-center justify-center text-fuchsia-400 text-base">
                                             🎟️
                                         </span>
@@ -160,9 +160,9 @@
                                         </span>
                                     @endif
                                     <div>
-                                        <span class="text-base text-slate-100">{{ $item->product_name }}</span>
-                                        @if($item->product_name === 'Drankkaart')
-                                            <span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40">Drankkaart</span>
+                                        <span class="text-base text-slate-100">{{ $item->product_name === 'Drankkaart' ? 'Consumptiekaart' : $item->product_name }}</span>
+                                        @if(in_array($item->product_name, ['Consumptiekaart', 'Drankkaart']))
+                                            <span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40">Consumptiekaart</span>
                                         @endif
                                     </div>
                                 </td>
@@ -238,7 +238,7 @@
                                         </span>
                                     @elseif($order->payment_method === 'drankkaart')
                                         <span class="px-3 py-1 rounded-xl text-xs font-bold bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40 flex items-center gap-1.5 w-max">
-                                            🎟️ Drankkaart
+                                            🎟️ Consumptiekaart
                                         </span>
                                     @elseif($order->payment_method === 'scanner')
                                         <span class="px-3 py-1 rounded-xl text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 flex items-center gap-1.5 w-max">
