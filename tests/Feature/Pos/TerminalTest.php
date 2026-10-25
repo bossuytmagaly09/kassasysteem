@@ -385,6 +385,20 @@ class TerminalTest extends TestCase
             ->assertSet('cashTendered', '');
     }
 
+    public function test_touchscreen_cash_keypad_auto_clears_prefilled_amount_on_first_tap(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->call('openDrankkaart')
+            ->assertSet('cashTendered', '20.00')
+            ->assertSet('cashTenderedAutoClear', true)
+            ->call('appendCashDigit', '5')
+            ->assertSet('cashTendered', '5')
+            ->assertSet('cashTenderedAutoClear', false)
+            ->call('appendCashDigit', '0')
+            ->assertSet('cashTendered', '50');
+    }
+
     public function test_idle_card_scan_without_transaction_displays_poef_name_and_saldo(): void
     {
         $poef = Poef::create([

@@ -41,6 +41,8 @@ class Terminal extends Component
 
     public string $cashTendered = '';
 
+    public bool $cashTenderedAutoClear = true;
+
     public ?string $scannedPoefName = null;
 
     public ?string $scannedPoefInfoName = null;
@@ -267,9 +269,8 @@ class Terminal extends Component
         if ($method === 'cash') {
             $this->showCashModal = true;
             $this->showQrModal = false;
-            if ($this->cashTendered === '') {
-                $this->cashTendered = number_format($this->calculateCardTotal() / 100, 2, '.', '');
-            }
+            $this->cashTendered = number_format($this->calculateCardTotal() / 100, 2, '.', '');
+            $this->cashTenderedAutoClear = true;
         } elseif ($method === 'qr') {
             $this->showQrModal = true;
             $this->showCashModal = false;
@@ -300,11 +301,24 @@ class Terminal extends Component
     public function setCashTendered(string $amount): void
     {
         $this->cashTendered = $amount;
+        $this->cashTenderedAutoClear = true;
         $this->broadcastCustomerDisplayState();
     }
 
     public function appendCashDigit(string $digit): void
     {
+        if ($this->cashTenderedAutoClear) {
+            $this->cashTenderedAutoClear = false;
+            if ($digit === ',' || $digit === '.') {
+                $this->cashTendered = '0,';
+            } else {
+                $this->cashTendered = $digit;
+            }
+            $this->broadcastCustomerDisplayState();
+
+            return;
+        }
+
         $current = trim($this->cashTendered);
 
         if ($digit === ',' || $digit === '.') {
@@ -317,7 +331,7 @@ class Terminal extends Component
             return;
         }
 
-        if ($current === '0') {
+        if ($current === '' || $current === '0') {
             $this->cashTendered = $digit;
         } else {
             if (preg_match('/[,.](\d{2})$/', $current)) {
@@ -332,11 +346,13 @@ class Terminal extends Component
     public function clearCashTendered(): void
     {
         $this->cashTendered = '';
+        $this->cashTenderedAutoClear = false;
         $this->broadcastCustomerDisplayState();
     }
 
     public function backspaceCashTendered(): void
     {
+        $this->cashTenderedAutoClear = false;
         $current = trim($this->cashTendered);
         if ($current !== '') {
             $this->cashTendered = mb_substr($current, 0, -1);
@@ -587,9 +603,8 @@ class Terminal extends Component
                 $this->showQrModal = true;
                 $this->showCashModal = false;
             }
-            if ($this->cashTendered === '') {
-                $this->cashTendered = number_format($this->calculateCardTotal() / 100, 2, '.', '');
-            }
+            $this->cashTendered = number_format($this->calculateCardTotal() / 100, 2, '.', '');
+            $this->cashTenderedAutoClear = true;
         } else {
             $this->showDrankkaartPurchaseModal = false;
             $this->showCashModal = false;
