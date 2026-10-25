@@ -21,10 +21,10 @@
                 <p class="text-xl text-slate-400 font-light max-w-2xl mx-auto">Kies een module om te starten. Snelle verwerking, real-time inzicht en volledige controle over het evenement.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 <!-- Kassa Module -->
-                <a href="{{ route('pos.index') }}" class="group relative block p-10 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-indigo-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]">
+                <a href="{{ route('pos.index') }}" class="group relative block p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-indigo-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]">
                     <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     
                     <div class="relative flex items-center justify-center w-20 h-20 bg-indigo-500/20 rounded-2xl mb-8 mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-indigo-500/30 shadow-inner">
@@ -32,35 +32,48 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
                         </svg>
                     </div>
-                    <h3 class="relative text-3xl font-bold text-slate-100 mb-4 text-center group-hover:text-indigo-200 transition-colors">Kassa Systeem</h3>
-                    <p class="relative text-slate-400 text-center text-lg leading-relaxed group-hover:text-slate-300 transition-colors">Point of Sale interface. Verwerk razendsnel bestellingen en betalingen via touch.</p>
+                    <h3 class="relative text-2xl font-bold text-slate-100 mb-3 text-center group-hover:text-indigo-200 transition-colors">Kassa Systeem</h3>
+                    <p class="relative text-slate-400 text-center text-sm leading-relaxed group-hover:text-slate-300 transition-colors">Point of Sale interface. Verwerk razendsnel bestellingen en betalingen via touch.</p>
+                </a>
+
+                <!-- Klantenscherm Module (2de scherm) -->
+                <a href="{{ route('pos.display') }}" target="_blank" class="group relative block p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-cyan-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.3)]">
+                    <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                    <div class="relative flex items-center justify-center w-20 h-20 bg-cyan-500/20 rounded-2xl mb-8 mx-auto group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 border border-cyan-500/30 shadow-inner">
+                        <svg class="w-10 h-10 text-cyan-400 group-hover:text-cyan-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="relative text-2xl font-bold text-slate-100 mb-3 text-center group-hover:text-cyan-200 transition-colors">Klantenscherm</h3>
+                    <p class="relative text-slate-400 text-center text-sm leading-relaxed group-hover:text-slate-300 transition-colors">2de scherm voor bezoekers. Toont live bestellingen, prijzen, vakjes en het openstaande saldo.</p>
                 </a>
 
                 <!-- Scanner Module -->
-                <a href="{{ route('scanner.index') }}" class="group relative block p-10 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-emerald-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(16,185,129,0.3)]">
+                <a href="{{ route('scanner.index') }}" class="group relative block p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-emerald-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(16,185,129,0.3)]">
                     <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                    <div class="relative flex items-center justify-center w-20 h-20 bg-emerald-500/20 rounded-2xl mb-8 mx-auto group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 border border-emerald-500/30 shadow-inner">
+                    <div class="relative flex items-center justify-center w-20 h-20 bg-emerald-500/20 rounded-2xl mb-8 mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-emerald-500/30 shadow-inner">
                         <svg class="w-10 h-10 text-emerald-400 group-hover:text-emerald-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
                         </svg>
                     </div>
-                    <h3 class="relative text-3xl font-bold text-slate-100 mb-4 text-center group-hover:text-emerald-200 transition-colors">Kaart Scanner</h3>
-                    <p class="relative text-slate-400 text-center text-lg leading-relaxed group-hover:text-slate-300 transition-colors">Scan direct NFC-bandjes en kaarten voor het uitlezen van bezoekerspoefs.</p>
+                    <h3 class="relative text-2xl font-bold text-slate-100 mb-3 text-center group-hover:text-emerald-200 transition-colors">Kaart Scanner</h3>
+                    <p class="relative text-slate-400 text-center text-sm leading-relaxed group-hover:text-slate-300 transition-colors">Scan direct NFC-bandjes en kaarten voor het uitlezen van bezoekerspoefs.</p>
                 </a>
 
                 <!-- Beheer Module -->
-                <a href="{{ route('admin.dashboard') }}" class="group relative block p-10 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-amber-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(245,158,11,0.3)]">
+                <a href="{{ route('admin.dashboard') }}" class="group relative block p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-amber-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(245,158,11,0.3)]">
                     <div class="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                    <div class="relative flex items-center justify-center w-20 h-20 bg-amber-500/20 rounded-2xl mb-8 mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-amber-500/30 shadow-inner">
+                    <div class="relative flex items-center justify-center w-20 h-20 bg-amber-500/20 rounded-2xl mb-8 mx-auto group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 border border-amber-500/30 shadow-inner">
                         <svg class="w-10 h-10 text-amber-400 group-hover:text-amber-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                         </svg>
                     </div>
-                    <h3 class="relative text-3xl font-bold text-slate-100 mb-4 text-center group-hover:text-amber-200 transition-colors">Beheerpaneel</h3>
-                    <p class="relative text-slate-400 text-center text-lg leading-relaxed group-hover:text-slate-300 transition-colors">Importeer producten uit de web database en beheer kassa instellingen.</p>
+                    <h3 class="relative text-2xl font-bold text-slate-100 mb-3 text-center group-hover:text-amber-200 transition-colors">Beheerpaneel</h3>
+                    <p class="relative text-slate-400 text-center text-sm leading-relaxed group-hover:text-slate-300 transition-colors">Importeer producten uit de web database en beheer kassa instellingen.</p>
                 </a>
 
             </div>

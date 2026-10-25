@@ -46,18 +46,6 @@
                     </svg>
                     <span>Koppel Poef</span>
                 </button>
-
-                <!-- Klantenscherm Link (2de scherm) -->
-                <a href="{{ route('pos.display') }}"
-                   target="_blank"
-                   rel="noopener"
-                   class="px-4 py-2 text-sm font-semibold rounded-xl flex items-center gap-2 transition-all border shadow-sm bg-slate-800/60 border-slate-700/80 hover:bg-slate-700/60 text-slate-300 hover:text-white"
-                   title="Open het klantenscherm op de 2de monitor">
-                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                    </svg>
-                    <span>Klantenscherm ↗</span>
-                </a>
             </div>
             
             <div class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-fuchsia-300">
