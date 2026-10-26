@@ -193,10 +193,12 @@
         @if($hasDrankkaart)
             <!-- Drankkaart Purchase Modal (Cash or QR, compact landscape, zero scrolling) -->
             <div wire:key="drankkaart-purchase-modal"
-                 class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto"
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 pt-16 sm:pt-20 overflow-y-auto"
+                 style="padding-top: 5.5rem; padding-bottom: 2.5rem;"
                  x-data
                  @keydown.escape.window="$wire.closeDrankkaart()">
-                <div class="bg-slate-900 border border-slate-700 p-4 sm:p-5 rounded-3xl shadow-2xl max-w-3xl w-full relative flex flex-col">
+                <div class="bg-slate-900 border border-slate-700 p-4 sm:p-5 rounded-3xl shadow-2xl max-w-xl w-full relative flex flex-col my-auto"
+                     style="margin-top: auto; margin-bottom: auto;">
                     
                     <!-- Top Bar: Title, QR/Cash Switcher & Close button (Always Prominently Visible) -->
                     <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-800 shrink-0">
