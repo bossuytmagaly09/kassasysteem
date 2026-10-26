@@ -16,7 +16,7 @@
                         </div>
                         <div>
                             <h2 class="text-2xl font-black text-slate-100">Koppel Poef & Identificatie</h2>
-                            <p class="text-xs sm:text-sm text-slate-400">Koppel een badge, bankkaart of lidkaart aan een lid van het drankplatform.</p>
+                            <p class="text-xs sm:text-sm text-slate-400">Koppel een bankkaart, badge of nfc kaart aan een lid van het drankplatform.</p>
                         </div>
                     </div>
 
@@ -154,28 +154,24 @@
                                     <p class="text-[11px] text-slate-500 mt-1">Houd badge, bankkaart of tag tegen de scanner; het nummer verschijnt vanzelf.</p>
                                 </div>
 
-                                <!-- Type Medium -->
+                                <!-- Type Medium: Bankkaart, Badge of NFC Kaart -->
                                 <div>
-                                    <label class="block text-xs font-semibold text-slate-400 mb-1">Type Medium:</label>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        @foreach(['badge' => '🏷️ Badge', 'bankkaart' => '💳 Bankkaart', 'kaart' => '🎟️ Drankkaart', 'sleutelhanger' => '🔑 Sleutelhanger', 'andere' => '📁 Andere'] as $type => $labelName)
-                                            <label class="cursor-pointer">
+                                    <label class="block text-xs font-semibold text-slate-400 mb-1.5">Type Medium:</label>
+                                    <div class="grid grid-cols-3 gap-2.5">
+                                        @foreach([
+                                            'bankkaart' => ['label' => 'Bankkaart', 'icon' => '💳'],
+                                            'badge' => ['label' => 'Badge', 'icon' => '🏷️'],
+                                            'nfc_kaart' => ['label' => 'NFC Kaart', 'icon' => '⚡'],
+                                        ] as $type => $info)
+                                            <label class="cursor-pointer select-none">
                                                 <input type="radio" wire:model="cardType" value="{{ $type }}" class="peer sr-only">
-                                                <div class="p-2 text-center text-xs font-semibold rounded-xl border border-slate-700 bg-slate-900 text-slate-300 peer-checked:bg-indigo-600/30 peer-checked:border-indigo-500 peer-checked:text-indigo-200 transition-all">
-                                                    {{ $labelName }}
+                                                <div class="p-3 text-center text-sm font-bold rounded-xl border border-slate-700/80 bg-slate-900/90 text-slate-300 peer-checked:bg-indigo-600/30 peer-checked:border-indigo-500 peer-checked:text-white peer-checked:shadow-md transition-all flex flex-col items-center justify-center gap-1 hover:border-slate-600">
+                                                    <span class="text-xl">{{ $info['icon'] }}</span>
+                                                    <span class="tracking-wide">{{ $info['label'] }}</span>
                                                 </div>
                                             </label>
                                         @endforeach
                                     </div>
-                                </div>
-
-                                <!-- Label / Omschrijving (Optioneel) -->
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-400 mb-1">Omschrijving / Label (optioneel):</label>
-                                    <input type="text"
-                                           wire:model="label"
-                                           placeholder="bv. Blauwe badge, Visa ..9402, Reserve..."
-                                           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
                                 </div>
 
                                 <!-- Actieknop -->
@@ -203,7 +199,6 @@
                                             <th class="p-3.5">Lid / Poef</th>
                                             <th class="p-3.5">Medium</th>
                                             <th class="p-3.5">Serienummer (UID)</th>
-                                            <th class="p-3.5">Label</th>
                                             <th class="p-3.5">Gekoppeld Op</th>
                                             <th class="p-3.5 text-right">Actie</th>
                                         </tr>
@@ -216,15 +211,18 @@
                                                 </td>
                                                 <td class="p-3.5">
                                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-                                                        {{ $card->card_type === 'badge' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : ($card->card_type === 'bankkaart' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-700/40 text-slate-300 border border-slate-600') }}">
-                                                        {{ ucfirst($card->card_type ?? 'Kaart') }}
+                                                        {{ $card->card_type === 'badge' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : ($card->card_type === 'bankkaart' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30') }}">
+                                                        @if($card->card_type === 'bankkaart')
+                                                            💳 Bankkaart
+                                                        @elseif($card->card_type === 'badge')
+                                                            🏷️ Badge
+                                                        @else
+                                                            ⚡ NFC Kaart
+                                                        @endif
                                                     </span>
                                                 </td>
                                                 <td class="p-3.5 font-mono text-xs text-indigo-300">
                                                     {{ $card->uid }}
-                                                </td>
-                                                <td class="p-3.5 text-slate-400 text-xs">
-                                                    {{ $card->label ?: '-' }}
                                                 </td>
                                                 <td class="p-3.5 text-slate-500 text-xs">
                                                     {{ $card->created_at?->format('d-m-Y H:i') ?? '-' }}
@@ -241,7 +239,7 @@
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="6" class="p-8 text-center text-slate-500 text-sm">
+                                                <td colspan="5" class="p-8 text-center text-slate-500 text-sm">
                                                     Nog geen kaarten of badges gekoppeld.
                                                 </td>
                                             </tr>

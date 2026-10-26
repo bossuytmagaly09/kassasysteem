@@ -23,7 +23,7 @@ class KoppelPoef extends Component
 
     public string $cardUid = '';
 
-    public string $cardType = 'badge'; // 'badge', 'bankkaart', 'kaart', 'sleutelhanger', 'andere'
+    public string $cardType = 'nfc_kaart'; // 'bankkaart', 'badge', 'nfc_kaart'
 
     public string $label = '';
 
@@ -304,11 +304,10 @@ class KoppelPoef extends Component
     private function cardTypeLabel(string $type): string
     {
         return match ($type) {
-            'badge' => 'Badge',
             'bankkaart' => 'Bankkaart',
-            'kaart' => 'Drankkaart',
-            'sleutelhanger' => 'Sleutelhanger / Tag',
-            default => 'Kaart',
+            'badge' => 'Badge',
+            'nfc_kaart', 'kaart' => 'NFC Kaart',
+            default => ucfirst(str_replace('_', ' ', $type)),
         };
     }
 

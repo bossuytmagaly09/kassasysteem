@@ -165,9 +165,9 @@
                         id="btn-drankkaart"
                         wire:click="openDrankkaart"
                         @disabled(empty($orderItems))
-                        class="flex-1 py-4 text-lg font-bold rounded-2xl text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 active:scale-[0.98] transition-all shadow-lg shadow-fuchsia-900/30 border border-fuchsia-400/30 flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
+                        class="flex-[1.3] min-w-0 py-4 px-3 text-base font-black text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 active:scale-[0.98] transition-all shadow-lg shadow-fuchsia-900/30 border border-fuchsia-400/40 flex justify-center items-center gap-2 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
                         <svg class="w-5 h-5 pointer-events-none shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
-                        <span>Consumptiekaart</span>
+                        <span class="truncate">Consumptiekaart</span>
                     </button>
                     @endif
 
@@ -177,9 +177,9 @@
                         id="btn-afrekenen"
                         wire:click="startPayment"
                         @disabled(empty($orderItems))
-                        class="flex-1 py-4 text-lg font-bold rounded-2xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition-all shadow-lg shadow-emerald-900/30 border border-emerald-400/30 flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
+                        class="flex-[0.7] min-w-0 py-4 px-3 text-base font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition-all shadow-lg shadow-emerald-900/30 border border-emerald-400/40 flex justify-center items-center gap-2 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
                         <svg class="w-5 h-5 pointer-events-none shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-                        <span>Scanner</span>
+                        <span class="truncate">Scanner</span>
                     </button>
                     @endif
                 @endif
@@ -388,9 +388,9 @@
                         <button type="button"
                                 id="btn-drankkaart-klaar"
                                 wire:click="completeDrankkaart"
-                                class="w-2/3 py-3 text-base font-black text-white bg-gradient-to-r {{ $cardPaymentMethod === 'qr' ? 'from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500' : 'from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500' }} rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+                                class="w-2/3 py-3 px-3 text-base font-black text-white bg-gradient-to-r {{ $cardPaymentMethod === 'qr' ? 'from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500' : 'from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500' }} rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
                             <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                            <span>{{ $cardPaymentMethod === 'qr' ? 'Betaling Ontvangen & Registreren als QR' : 'Bevestig Betaling' }}</span>
+                            <span>{{ $cardPaymentMethod === 'qr' ? 'Betaling Voltooid (QR)' : 'Bevestig Betaling' }}</span>
                         </button>
                     </div>
                 </div>

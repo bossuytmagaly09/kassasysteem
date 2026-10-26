@@ -8,12 +8,12 @@
 //   nfc.autoConnect();                      // daarna: automatisch bij het laden van de pagina
 
 export class NfcReader extends EventTarget {
-  constructor({ baudRate = 115200, filters = null, scanCooldown = 15000, holdingTimeout = 3000 } = {}) {
+  constructor({ baudRate = 115200, filters = null, scanCooldown = 1200, holdingTimeout = 1200 } = {}) {
     super();
     this.baudRate = baudRate;
-    this.filters = filters; // bv. [{ usbVendorId: 0x1a86 }] voor CH340 klonen
-    this.scanCooldown = scanCooldown; // 15 seconden cooldown voor dezelfde kaart
-    this.holdingTimeout = holdingTimeout; // 3 seconden aanwezigheid op scanner
+    this.filters = filters; // bv. [{ usbVendorId: 0x1a86 }] voor CH340 Nano klonen
+    this.scanCooldown = scanCooldown; // Snelle 1.2s cooldown voor vloeiend scannen
+    this.holdingTimeout = holdingTimeout; // 1.2s aanwezigheidsdetectie op scanner
     this._lastHandledUid = null;
     this._lastHandledTime = 0;
     this._lastSeenTime = 0;
@@ -33,6 +33,25 @@ export class NfcReader extends EventTarget {
   static get supported() { return 'serial' in navigator; }
 
   _emit(type, detail) { this.dispatchEvent(new CustomEvent(type, { detail })); }
+
+  resetCooldown() {
+    this._lastHandledUid = null;
+    this._lastHandledTime = 0;
+    this._lastSeenTime = 0;
+  }
+
+  // 2-weg communicatie naar Arduino Nano (stuurt commando's met \n af)
+  async send(command) {
+    if (!this.writer) return false;
+    try {
+      const text = String(command).endsWith('\n') ? String(command) : `${command}\n`;
+      await this.writer.write(text);
+      return true;
+    } catch (err) {
+      console.warn('Serial send error:', err);
+      return false;
+    }
+  }
 
   // Moet vanuit een klik (user gesture) aangeroepen worden.
   async connect() {
@@ -62,20 +81,22 @@ export class NfcReader extends EventTarget {
     this._emit('status', { state: 'disconnected' });
   }
 
-  // 'O' = succes-piep, 'E' = fout-piep (maximaal 1 piep per 2 seconden)
+  // 2-weg piep feedback naar Arduino Nano:
+  // Stuurt 'OK\n' en 'O\n' bij succes (buzzer kort hoog / groen LED)
+  // Stuurt 'ERR\n' en 'E\n' bij fout (buzzer kort laag / rood LED)
   async beep(ok = true) {
     const now = Date.now();
-    if (now - this._lastBeepTime < 2000) {
+    if (now - this._lastBeepTime < 300) {
       return;
     }
     this._lastBeepTime = now;
 
-    if (this.writer) {
-      try {
-        await this.writer.write(ok ? 'O' : 'E');
-      } catch (err) {
-        console.warn('Beep error:', err);
-      }
+    if (ok) {
+      await this.send('OK');
+      await this.send('O');
+    } else {
+      await this.send('ERR');
+      await this.send('E');
     }
   }
 
@@ -105,6 +126,8 @@ export class NfcReader extends EventTarget {
       const enc = new TextEncoderStream();
       enc.readable.pipeTo(port.writable).catch(() => {});
       this.writer = enc.writable.getWriter();
+      // 2-weg handshake: meld aan Arduino dat webapp klaar is
+      this.send('READY');
     } catch {}
 
     this._readLoop(port);
@@ -122,8 +145,9 @@ export class NfcReader extends EventTarget {
         buf += value;
         let i;
         while ((i = buf.indexOf('\n')) >= 0) {
-          this._handleLine(buf.slice(0, i).trim());
+          const line = buf.slice(0, i);
           buf = buf.slice(i + 1);
+          this._handleLine(line);
         }
       }
     } catch (err) {
@@ -144,21 +168,21 @@ export class NfcReader extends EventTarget {
     // 1. Zelfde kaart controle
     if (this._lastHandledUid === clean) {
       const timeSinceLastSeen = now - this._lastSeenTime;
-      this._lastSeenTime = now; // Update moment van aanwezigheid op de lezer
+      this._lastSeenTime = now;
 
-      // Zolang de kaart op de scanner gehouden wordt (< holdingTimeout gap van 3s): negeer volledig
+      // Zolang kaart vastgehouden wordt op de lezer (< 1.2s gap)
       if (timeSinceLastSeen < this.holdingTimeout) {
         return;
       }
 
-      // Kaart was weggehaald, maar de 15 seconden cooldown loopt nog
+      // Korte cooldown voor dezelfde kaart
       if (now - this._lastHandledTime < this.scanCooldown) {
         return;
       }
     }
 
-    // 2. Snelle ruis-debounce (< 400ms)
-    if (now - this._lastHandledTime < 400) {
+    // 2. Snelle ruis-debounce (< 300ms)
+    if (now - this._lastHandledTime < 300) {
       return;
     }
 
@@ -166,27 +190,72 @@ export class NfcReader extends EventTarget {
     this._lastHandledTime = now;
     this._lastSeenTime = now;
 
+    // 2-weg communicatie: onmiddellijke ACK bevestiging terug naar Arduino Nano
+    this.send('ACK');
+
     this._emit('card', { uid: clean, type });
   }
 
   _handleLine(line) {
     if (!line) return;
-    let msg;
-    try {
-      msg = JSON.parse(line);
-    } catch {
-      // Direct raw UID (e.g. alphanumeric string from RFID or barcode reader)
-      const clean = line.replace(/[\r\n\t]/g, '').trim();
-      if (clean.length >= 4) {
-        this._handleCard(clean, 'raw');
-      }
+    const raw = String(line).replace(/[\r\n\t]/g, '').trim();
+    if (!raw) return;
+
+    // 1. JSON parsing (bijv. {"event":"card","uid":"04A1B2C3"})
+    if (raw.startsWith('{') && raw.endsWith('}')) {
+      try {
+        const msg = JSON.parse(raw);
+        if (msg.event === 'card' && msg.uid) {
+          this._handleCard(msg.uid, msg.type ?? 'nfc');
+          return;
+        }
+        if (msg.uid) {
+          this._handleCard(msg.uid, msg.type ?? 'nfc');
+          return;
+        }
+        if (msg.event === 'ready') {
+          this._emit('status', { state: 'ready', version: msg.version });
+          return;
+        }
+        if (msg.event === 'error') {
+          this._emit('status', { state: 'error', message: msg.msg });
+          return;
+        }
+      } catch {}
+    }
+
+    // 2. Arduino status/log meldingen (geen kaartscans)
+    const upper = raw.toUpperCase();
+    if (upper === 'READY' || upper === 'PONG' || upper === 'SCANNER READY' || upper.includes('MFRC522 INITIALIZED')) {
+      this._emit('status', { state: 'ready' });
+      return;
+    }
+    if (upper === 'OK' || upper === 'ERR' || upper === 'ERROR' || upper === 'ACK') {
       return;
     }
 
-    if (msg.event === 'card' && msg.uid) this._handleCard(msg.uid, msg.type ?? 'nfc');
-    else if (msg.event === 'ready') this._emit('status', { state: 'ready', version: msg.version });
-    else if (msg.event === 'error') this._emit('status', { state: 'error', message: msg.msg });
-    else if (msg.uid) this._handleCard(msg.uid, msg.type ?? 'nfc');
+    // 3. Verwijder veelvoorkomende Arduino prefixes ("Card UID: 04 A1 B2 C3", "UID: 04:A1:B2:C3", "NFC: ...")
+    let cleaned = raw.replace(/^(?:card\s*uid|uid|card|tag|nfc|id)\s*[:=\-]\s*/i, '').trim();
+
+    // 4. Hex reeksen met spaties of dubbelepunt: "04 A1 B2 C3" of "04:A1:B2:C3" -> "04A1B2C3"
+    if (/^[0-9A-Fa-f]{2}(?:[\s:\-][0-9A-Fa-f]{2}){2,15}$/.test(cleaned)) {
+      const normalizedHex = cleaned.replace(/[\s:\-]/g, '').toUpperCase();
+      this._handleCard(normalizedHex, 'nfc');
+      return;
+    }
+
+    // 5. Zuivere alfanumerieke UID (bijv. 04A1B2C3 of getallenreeks)
+    if (/^[A-Za-z0-9_\-]{4,64}$/.test(cleaned)) {
+      this._handleCard(cleaned, 'raw');
+      return;
+    }
+
+    // 6. Ingesloten hex patroon opsporen in een string
+    const hexMatch = cleaned.match(/([0-9A-Fa-f]{2}(?:[\s:\-][0-9A-Fa-f]{2}){3,9})/);
+    if (hexMatch) {
+      const extracted = hexMatch[1].replace(/[\s:\-]/g, '').toUpperCase();
+      this._handleCard(extracted, 'nfc');
+    }
   }
 
   async _close() {

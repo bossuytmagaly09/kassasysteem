@@ -258,6 +258,7 @@ class Terminal extends Component
         $this->paymentError = '';
         $this->awaitingPayment = true;
         $this->broadcastCustomerDisplayState();
+        $this->dispatch('nfc-awaiting-payment');
     }
 
     public function cancelPayment(): void
@@ -265,6 +266,7 @@ class Terminal extends Component
         $this->awaitingPayment = false;
         $this->paymentError = '';
         $this->broadcastCustomerDisplayState();
+        $this->dispatch('nfc-cancel-payment');
     }
 
     public function calculateCardTotal(): int
@@ -589,42 +591,54 @@ class Terminal extends Component
             return;
         }
 
-        $cardHash = BeheerApiService::hashCardUid($cardUid);
+        $cardUid = trim($cardUid);
+        $normalizedUid = strtoupper((string) preg_replace('/[^A-Fa-f0-9]/', '', $cardUid));
+        $hashes = array_filter([
+            BeheerApiService::hashCardUid($cardUid),
+            $normalizedUid !== '' ? BeheerApiService::hashCardUid($normalizedUid) : null,
+        ]);
+
         $card = Card::with('poef')
-            ->where(function ($query) use ($cardUid, $cardHash): void {
-                $query->where('uid', $cardUid)
-                    ->orWhere('card_hash', $cardHash);
+            ->where(function ($query) use ($cardUid, $normalizedUid, $hashes): void {
+                $query->whereIn('uid', array_filter([$cardUid, $normalizedUid]))
+                    ->orWhereIn('card_hash', $hashes);
             })
             ->where('status', 'active')
             ->first();
 
         $poef = $card?->poef;
 
-        $this->scannedPoefName = $poef?->poef_name ?: $poef?->name;
+        // Enkel als er een kaart of badge gekoppeld is aan een actieve poef mag er afgerekend worden
+        if (! $card || ! $poef) {
+            $this->paymentError = 'Geen actieve poef gekoppeld aan deze kaart of badge ('.($normalizedUid ?: $cardUid).').';
+            $this->dispatch('nfc-beep', success: false);
+            $this->broadcastCustomerDisplayState('error');
+
+            return;
+        }
+
+        $this->scannedPoefName = $poef->poef_name ?: $poef->name;
         $this->lastPaymentMethod = 'scanner';
         $this->lastCashChange = null;
 
         $this->storeOrder(
             $event,
             PaymentMode::Scanner,
-            cardUid: $cardUid,
-            poefId: $poef?->id,
-            cardId: $card?->id,
-            cardHash: $cardHash
+            cardUid: $card->uid ?: $cardUid,
+            poefId: $poef->id,
+            cardId: $card->id,
+            cardHash: $card->card_hash ?: BeheerApiService::hashCardUid($card->uid ?: $cardUid)
         );
 
-        if ($poef) {
-            $this->lastPoefTotalSpent = (int) Order::where('event_id', $event->id)
-                ->where('poef_id', $poef->id)
-                ->sum('total_amount');
-        } else {
-            $this->lastPoefTotalSpent = null;
-        }
+        $this->lastPoefTotalSpent = (int) Order::where('event_id', $event->id)
+            ->where('poef_id', $poef->id)
+            ->sum('total_amount');
 
         $this->awaitingPayment = false;
         $this->paymentError = '';
         $this->paymentSuccess = true;
 
+        $this->dispatch('nfc-beep', success: true);
         $this->broadcastCustomerDisplayState('success');
     }
 
@@ -635,12 +649,17 @@ class Terminal extends Component
         }
 
         $event = Event::active();
-        $cardHash = BeheerApiService::hashCardUid($cardUid);
+        $cardUid = trim($cardUid);
+        $normalizedUid = strtoupper((string) preg_replace('/[^A-Fa-f0-9]/', '', $cardUid));
+        $hashes = array_filter([
+            BeheerApiService::hashCardUid($cardUid),
+            $normalizedUid !== '' ? BeheerApiService::hashCardUid($normalizedUid) : null,
+        ]);
 
         $card = Card::with('poef')
-            ->where(function ($query) use ($cardUid, $cardHash): void {
-                $query->where('uid', $cardUid)
-                    ->orWhere('card_hash', $cardHash);
+            ->where(function ($query) use ($cardUid, $normalizedUid, $hashes): void {
+                $query->whereIn('uid', array_filter([$cardUid, $normalizedUid]))
+                    ->orWhereIn('card_hash', $hashes);
             })
             ->where('status', 'active')
             ->first();
@@ -654,7 +673,7 @@ class Terminal extends Component
             $this->scannedPoefInfoError = null;
             $this->showPoefInfoModal = false;
 
-            // Broadcast enkel naar het klantenscherm; niet op de kassa en geen dubbele piep
+            // Broadcast naar het klantenscherm (geen dubbele piep op idle saldo check)
             $this->broadcastPoefInfoDisplay($this->scannedPoefInfoName, $this->scannedPoefInfoTotalSpent);
         } else {
             $this->scannedPoefInfoName = null;
@@ -663,7 +682,6 @@ class Terminal extends Component
             $this->showPoefInfoModal = false;
 
             $this->dispatch('nfc-beep', success: false);
-
             $this->broadcastPoefInfoDisplay(null, null, 'Kaart niet gekoppeld aan een poef.');
         }
     }

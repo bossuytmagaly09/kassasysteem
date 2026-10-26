@@ -80,12 +80,22 @@
         <script type="module">
         import { NfcReader } from '/js/nfc-reader.js?v={{ filemtime(public_path('js/nfc-reader.js')) }}';
 
-        // 15 seconden cooldown voor dezelfde kaart en 3 seconden aanwezigheidsdetectie
-        const SAME_CARD_COOLDOWN_MS = 15000;
-        const CARD_HOLDING_TIMEOUT_MS = 3000;
+        // 1.2s cooldown en 1.2s aanwezigheidsdetectie voor snelle reactietijd en onmiddellijk afrekenen
+        const SAME_CARD_COOLDOWN_MS = 1200;
+        const CARD_HOLDING_TIMEOUT_MS = 1200;
         let lastHandledUid = null;
         let lastHandledTime = 0;
         let lastSeenTime = 0;
+
+        function resetNfcCooldown() {
+            lastHandledUid = null;
+            lastHandledTime = 0;
+            lastSeenTime = 0;
+            if (window.__nfcReader) {
+                window.__nfcReader.resetCooldown();
+            }
+        }
+        window.__nfcResetCooldown = resetNfcCooldown;
 
         function dispatchCardScanned(rawUid) {
             const clean = String(rawUid || '').trim();
@@ -93,24 +103,22 @@
 
             const now = Date.now();
 
-            // Als dezelfde kaart continue op de lezer ligt (elke x ms een detectiepuls):
+            // Als dezelfde kaart continue op de lezer ligt (detectiepuls):
             if (lastHandledUid === clean) {
                 const timeSinceLastSeen = now - lastSeenTime;
-                lastSeenTime = now; // update laatste moment van detectie op de lezer
+                lastSeenTime = now;
 
-                // Kaart wordt nog steeds vastgehouden op de lezer (minder dan 3s sinds vorige puls): negeer volledig
                 if (timeSinceLastSeen < CARD_HOLDING_TIMEOUT_MS) {
                     return;
                 }
 
-                // Kaart was even weg, maar de 15 seconden cooldown is nog niet verstreken
                 if (now - lastHandledTime < SAME_CARD_COOLDOWN_MS) {
                     return;
                 }
             }
 
-            // Snelle ruis (< 400ms)
-            if (now - lastHandledTime < 400) {
+            // Snelle ruis-debounce (< 300ms)
+            if (now - lastHandledTime < 300) {
                 return;
             }
 
@@ -121,26 +129,40 @@
             Livewire.dispatch('card-scanned', { cardUid: clean, uid: clean });
         }
 
+        const savedBaud = parseInt(localStorage.getItem('nfc_baud_rate') || '115200', 10);
         if (!window.__nfcReader && NfcReader.supported) {
-            window.__nfcReader = new NfcReader({ scanCooldown: SAME_CARD_COOLDOWN_MS, holdingTimeout: CARD_HOLDING_TIMEOUT_MS });
+            window.__nfcReader = new NfcReader({ baudRate: savedBaud, scanCooldown: SAME_CARD_COOLDOWN_MS, holdingTimeout: CARD_HOLDING_TIMEOUT_MS });
         } else if (window.__nfcReader) {
             window.__nfcReader.scanCooldown = SAME_CARD_COOLDOWN_MS;
             window.__nfcReader.holdingTimeout = CARD_HOLDING_TIMEOUT_MS;
         }
 
-        // Luister globaal eenmalig naar piepjes
+        // 2-weg communicatie: luister naar Livewire events voor Arduino Nano feedback
         if (!window.__nfcBeepListenerAttached) {
             window.__nfcBeepListenerAttached = true;
+            
+            // Piep / Feedback signaal (OK of ERR)
             window.addEventListener('nfc-beep', (e) => {
                 if (window.__nfcReader) {
                     const success = (e.detail && typeof e.detail === 'object') 
                         ? (e.detail.success ?? (e.detail[0]?.success ?? true)) 
                         : true;
-                    // De scanner/Arduino hardware piept fysiek zelf al direct bij contact met de kaart.
-                    // Om een storende 2de pieptoon te voorkomen sturen we enkel bij fouten ('E') een extra piep.
-                    if (!success) {
-                        window.__nfcReader.beep(false);
-                    }
+                    window.__nfcReader.beep(success);
+                }
+            });
+
+            // Start afrekenen via scanner: reset cooldown en stuur SCAN commando naar Arduino
+            window.addEventListener('nfc-awaiting-payment', () => {
+                resetNfcCooldown();
+                if (window.__nfcReader) {
+                    window.__nfcReader.send('SCAN');
+                }
+            });
+
+            // Annuleer afrekenen: stuur IDLE commando naar Arduino
+            window.addEventListener('nfc-cancel-payment', () => {
+                if (window.__nfcReader) {
+                    window.__nfcReader.send('IDLE');
                 }
             });
         }

@@ -99,27 +99,22 @@ class TerminalTest extends TestCase
             ->assertSet('awaitingPayment', false);
     }
 
-    public function test_scanning_any_card_pays_the_order_without_poef_link(): void
+    public function test_scanning_unlinked_card_blocks_payment_and_shows_error(): void
     {
         Livewire::test(Terminal::class)
             ->call('addToOrder', $this->cola->id)
             ->call('addToOrder', $this->cola->id)
             ->call('startPayment')
-            ->call('handleScan', 'CARD-123')
-            ->assertSet('awaitingPayment', false)
-            ->assertSet('paymentSuccess', true)
-            ->assertSet('orderItems', [])
-            ->assertSee('Betaald!')
-            ->call('closeSuccess')
-            ->assertSet('paymentSuccess', false);
+            ->call('handleScan', 'UNLINKED-CARD-123')
+            ->assertSet('awaitingPayment', true)
+            ->assertSet('paymentSuccess', false)
+            ->assertSee('Geen actieve poef gekoppeld')
+            ->assertDispatched('nfc-beep', success: false);
 
-        $this->assertDatabaseHas('orders', [
+        $this->assertDatabaseMissing('orders', [
             'event_id' => $this->event->id,
-            'card_uid' => 'CARD-123',
-            'payment_method' => 'scanner',
-            'total_amount' => 500,
+            'card_uid' => 'UNLINKED-CARD-123',
         ]);
-        $this->assertDatabaseHas('order_items', ['product_name' => 'Cola', 'quantity' => 2, 'product_price' => 250]);
     }
 
     public function test_drankkaart_uses_vak_price_from_event(): void
@@ -165,6 +160,13 @@ class TerminalTest extends TestCase
 
     public function test_stock_limits_sales_and_marks_product_sold_out(): void
     {
+        $poef = Poef::create(['external_id' => 9999, 'name' => 'Stock Test Lid']);
+        Card::create([
+            'poef_id' => $poef->id,
+            'uid' => 'CARD-1',
+            'status' => 'active',
+        ]);
+
         $this->event->products()->updateExistingPivot($this->cola->id, ['stock_planned' => 2]);
 
         Livewire::test(Terminal::class)
