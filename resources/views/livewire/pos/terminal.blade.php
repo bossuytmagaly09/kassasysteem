@@ -284,8 +284,8 @@
                             </div>
 
                             <!-- Right Column: Touchscreen Ontvangen Bedrag + Large Keypad -->
-                            <div class="md:col-span-7 flex flex-col bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
-                                <div class="flex justify-between items-center mb-1.5">
+                            <div class="md:col-span-7 flex flex-col bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800">
+                                <div class="flex justify-between items-center mb-2">
                                     <label class="text-xs sm:text-sm font-bold text-slate-300">Ontvangen bedrag (€):</label>
                                     <button type="button"
                                             wire:click="clearCashTendered"
@@ -295,7 +295,7 @@
                                 </div>
                                 
                                 <!-- Amount Display -->
-                                <div class="bg-slate-900 border-2 border-slate-700 rounded-xl px-4 py-2 flex items-center justify-between shadow-inner mb-2.5">
+                                <div class="bg-slate-900 border-2 border-slate-700 rounded-xl px-4 py-2.5 flex items-center justify-between shadow-inner mb-4 sm:mb-5">
                                     <span class="text-slate-400 font-bold text-xl sm:text-2xl">€</span>
                                     <div class="text-3xl sm:text-4xl font-black text-white font-mono tracking-wider text-right">
                                         {{ $cashTendered !== '' ? str_replace('.', ',', $cashTendered) : '0,00' }}
