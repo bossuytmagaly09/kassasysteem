@@ -81,22 +81,20 @@ export class NfcReader extends EventTarget {
     this._emit('status', { state: 'disconnected' });
   }
 
-  // 2-weg piep feedback naar Arduino Nano:
-  // Stuurt 'OK\n' en 'O\n' bij succes (buzzer kort hoog / groen LED)
-  // Stuurt 'ERR\n' en 'E\n' bij fout (buzzer kort laag / rood LED)
+  // 'O' = succes-piep, 'E' = fout-piep (maximaal 1 piep per 1,5 seconde)
   async beep(ok = true) {
     const now = Date.now();
-    if (now - this._lastBeepTime < 300) {
+    if (now - this._lastBeepTime < 1500) {
       return;
     }
     this._lastBeepTime = now;
 
-    if (ok) {
-      await this.send('OK');
-      await this.send('O');
-    } else {
-      await this.send('ERR');
-      await this.send('E');
+    if (this.writer) {
+      try {
+        await this.writer.write(ok ? 'O' : 'E');
+      } catch (err) {
+        console.warn('Beep error:', err);
+      }
     }
   }
 
@@ -126,8 +124,6 @@ export class NfcReader extends EventTarget {
       const enc = new TextEncoderStream();
       enc.readable.pipeTo(port.writable).catch(() => {});
       this.writer = enc.writable.getWriter();
-      // 2-weg handshake: meld aan Arduino dat webapp klaar is
-      this.send('READY');
     } catch {}
 
     this._readLoop(port);
@@ -189,9 +185,6 @@ export class NfcReader extends EventTarget {
     this._lastHandledUid = clean;
     this._lastHandledTime = now;
     this._lastSeenTime = now;
-
-    // 2-weg communicatie: onmiddellijke ACK bevestiging terug naar Arduino Nano
-    this.send('ACK');
 
     this._emit('card', { uid: clean, type });
   }

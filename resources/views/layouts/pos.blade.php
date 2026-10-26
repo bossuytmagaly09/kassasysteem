@@ -137,33 +137,30 @@
             window.__nfcReader.holdingTimeout = CARD_HOLDING_TIMEOUT_MS;
         }
 
-        // 2-weg communicatie: luister naar Livewire events voor Arduino Nano feedback
+        // Feedback signaal bij fouten (de Arduino hardware piept zelf al bij contact)
         if (!window.__nfcBeepListenerAttached) {
             window.__nfcBeepListenerAttached = true;
             
-            // Piep / Feedback signaal (OK of ERR)
             window.addEventListener('nfc-beep', (e) => {
                 if (window.__nfcReader) {
                     const success = (e.detail && typeof e.detail === 'object') 
                         ? (e.detail.success ?? (e.detail[0]?.success ?? true)) 
                         : true;
-                    window.__nfcReader.beep(success);
+                    // De Arduino hardware piept zelf direct bij contact met de kaart.
+                    // Stuur ENKEL bij een fout ('E') een extra pieptoon om dubbele piepjes te voorkomen.
+                    if (!success) {
+                        window.__nfcReader.beep(false);
+                    }
                 }
             });
 
-            // Start afrekenen via scanner: reset cooldown en stuur SCAN commando naar Arduino
+            // Start afrekenen via scanner: reset direct cooldown zodat de kaart onmiddellijk reageert
             window.addEventListener('nfc-awaiting-payment', () => {
                 resetNfcCooldown();
-                if (window.__nfcReader) {
-                    window.__nfcReader.send('SCAN');
-                }
             });
 
-            // Annuleer afrekenen: stuur IDLE commando naar Arduino
             window.addEventListener('nfc-cancel-payment', () => {
-                if (window.__nfcReader) {
-                    window.__nfcReader.send('IDLE');
-                }
+                resetNfcCooldown();
             });
         }
 
