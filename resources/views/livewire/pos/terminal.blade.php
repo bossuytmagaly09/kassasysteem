@@ -75,7 +75,7 @@
     </div>
 
     <!-- Right Side: Order Summary -->
-    <div class="w-96 shrink-0 flex flex-col bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-xl overflow-hidden relative">
+    <div class="w-96 lg:w-[26rem] shrink-0 flex flex-col bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-xl overflow-hidden relative">
 
         <!-- Header -->
         <div class="p-6 bg-slate-900/30 border-b border-slate-700/50 flex justify-between items-center shrink-0">
@@ -132,7 +132,7 @@
         </div>
 
         <!-- Order Total & Actions -->
-        <div class="p-6 bg-slate-900/40 border-t border-slate-700/50 space-y-4 shrink-0">
+        <div class="p-5 sm:p-6 bg-slate-900/40 border-t border-slate-700/50 space-y-4 shrink-0">
             <div class="flex justify-between items-center">
                 <span class="text-slate-400 text-sm font-medium">Totaalbedrag</span>
                 <span class="text-3xl font-black text-emerald-400">
@@ -147,7 +147,7 @@
                 </div>
             @endif
 
-            <div class="flex gap-3 w-full">
+            <div class="flex gap-2.5 sm:gap-3 w-full">
                 @if($hasDrankkaart)
                 <button
                     type="button"
@@ -165,9 +165,10 @@
                         id="btn-drankkaart"
                         wire:click="openDrankkaart"
                         @disabled(empty($orderItems))
-                        class="flex-1 min-w-0 py-4 px-2.5 sm:px-3 text-sm sm:text-base font-black text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 active:scale-[0.98] transition-all shadow-lg shadow-fuchsia-900/30 border border-fuchsia-400/40 flex justify-center items-center gap-2 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
+                        style="flex: 1.4 1 0%;"
+                        class="min-w-0 py-4 px-2 sm:px-3 text-sm sm:text-base font-black text-white bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 active:scale-[0.98] transition-all shadow-lg shadow-fuchsia-900/30 border border-fuchsia-400/40 flex justify-center items-center gap-1.5 sm:gap-2 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
                         <svg class="w-5 h-5 pointer-events-none shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
-                        <span class="truncate">Consumptiekaart</span>
+                        <span class="whitespace-nowrap tracking-tight">Consumptiekaart</span>
                     </button>
                     @endif
 
@@ -177,9 +178,10 @@
                         id="btn-afrekenen"
                         wire:click="startPayment"
                         @disabled(empty($orderItems))
-                        class="flex-1 min-w-0 py-4 px-2.5 sm:px-3 text-sm sm:text-base font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition-all shadow-lg shadow-emerald-900/30 border border-emerald-400/40 flex justify-center items-center gap-2 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
+                        style="flex: 1 1 0%;"
+                        class="min-w-0 py-4 px-2 sm:px-3 text-sm sm:text-base font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] transition-all shadow-lg shadow-emerald-900/30 border border-emerald-400/40 flex justify-center items-center gap-1.5 sm:gap-2 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100">
                         <svg class="w-5 h-5 pointer-events-none shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-                        <span class="truncate">Scanner</span>
+                        <span class="whitespace-nowrap">Scanner</span>
                     </button>
                     @endif
                 @endif
