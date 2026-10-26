@@ -196,23 +196,23 @@
                  class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto"
                  x-data
                  @keydown.escape.window="$wire.closeDrankkaart()">
-                <div class="bg-slate-900 border border-slate-700 p-4 rounded-3xl shadow-2xl max-w-2xl w-full relative flex flex-col">
+                <div class="bg-slate-900 border border-slate-700 p-4 sm:p-5 rounded-3xl shadow-2xl max-w-3xl w-full relative flex flex-col">
                     
                     <!-- Top Bar: Title, QR/Cash Switcher & Close button (Always Prominently Visible) -->
                     <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-800 shrink-0">
-                        <div class="flex items-center gap-3 min-w-0">
+                        <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 flex items-center justify-center text-fuchsia-400 shrink-0">
                                 <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
                             </div>
-                            <div class="min-w-0">
-                                <h3 class="text-xl font-black text-white leading-tight truncate">Consumptiekaart Afrekenen</h3>
+                            <div>
+                                <h3 class="text-lg sm:text-xl font-black text-white leading-tight">Consumptiekaart Afrekenen</h3>
                                 <p class="text-xs text-slate-400 leading-tight">Kies Contant of QR Code om af te rekenen</p>
                             </div>
                         </div>
 
                         <!-- Payment Method Toggle (Cash vs QR) + Close Button -->
                         <div class="flex items-center gap-2 shrink-0">
-                            <div class="flex gap-2 p-1 bg-slate-950 rounded-xl border border-slate-700 shrink-0">
+                            <div class="flex gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-700 shrink-0">
                                 <button type="button"
                                         id="btn-cash"
                                         wire:click="setCardPaymentMethod('cash')"
@@ -236,76 +236,44 @@
                     </div>
 
                     @if($cardPaymentMethod === 'cash')
-                        <!-- Cash Payment: Strictly 2 columns side-by-side (grid-cols-2) -->
-                        <div class="grid grid-cols-2 gap-4 mt-3 mb-3 items-start">
+                        <!-- Cash Payment: Clean 2 columns with prominent Keypad -->
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mt-3 mb-3 items-stretch">
                             
-                            <!-- Left Column: Totals, Quick Bills & Wisselgeld -->
-                            <div class="flex flex-col gap-2">
-                                <div class="bg-slate-800/80 rounded-xl p-3 border border-slate-700/80 flex justify-between items-center gap-3">
-                                    <div class="min-w-0">
-                                        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block truncate">Te betalen voor consumptiekaart:</span>
-                                        <span class="text-xs text-slate-400 font-medium truncate block">Consumptiekaart (vaste prijs)</span>
-                                    </div>
-                                    <div class="text-2xl font-black text-emerald-400 whitespace-nowrap shrink-0">
+                            <!-- Left Column: Te betalen & Wisselgeld (Clean & uncluttered) -->
+                            <div class="md:col-span-5 flex flex-col justify-between gap-3">
+                                <!-- Te Betalen Card -->
+                                <div class="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/80 flex flex-col justify-center">
+                                    <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block">Te betalen voor consumptiekaart:</span>
+                                    <div class="text-3xl sm:text-4xl font-black text-emerald-400 mt-1 whitespace-nowrap">
                                         € {{ number_format($cardTotal / 100, 2, ',', '.') }}
                                     </div>
                                 </div>
 
-                                <!-- Quick Bill Buttons -->
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-400 mb-1">Snelkeuze biljetten:</label>
-                                    @php
-                                        $cardEuro = $cardTotal / 100;
-                                    @endphp
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <button type="button"
-                                                wire:click="setCashTendered('{{ number_format($cardEuro, 2, '.', '') }}')"
-                                                class="py-2.5 px-1 bg-indigo-600/30 hover:bg-indigo-600 border border-indigo-500/50 text-xs font-bold text-indigo-200 rounded-lg transition-all active:scale-95 text-center whitespace-nowrap flex items-center justify-center gap-1">
-                                            <span>Pas (€&nbsp;{{ number_format($cardEuro, 2, ',', '.') }})</span>
-                                        </button>
-                                        <button type="button"
-                                                wire:click="setCashTendered('20.00')"
-                                                class="py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-bold text-white rounded-lg transition-all active:scale-95 text-center whitespace-nowrap flex items-center justify-center gap-1">
-                                            <span>€&nbsp;20</span>
-                                        </button>
-                                        <button type="button"
-                                                wire:click="setCashTendered('50.00')"
-                                                class="py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-bold text-white rounded-lg transition-all active:scale-95 text-center whitespace-nowrap flex items-center justify-center gap-1">
-                                            <span>€&nbsp;50</span>
-                                        </button>
-                                        <button type="button"
-                                                wire:click="setCashTendered('100.00')"
-                                                class="py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-bold text-white rounded-lg transition-all active:scale-95 text-center whitespace-nowrap flex items-center justify-center gap-1">
-                                            <span>€&nbsp;100</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Change / Remaining display -->
+                                <!-- Wisselgeld / Nog te ontvangen Card -->
                                 @php
                                     $tenderedFloat = (float) str_replace(',', '.', $cashTendered);
                                     $tenderedCents = (int) round($tenderedFloat * 100);
                                     $changeCents = max(0, $tenderedCents - $cardTotal);
                                 @endphp
                                 @if($tenderedCents >= $cardTotal)
-                                    <div class="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex justify-between items-center shadow-md gap-2">
-                                        <span class="text-xs uppercase tracking-wider font-bold text-emerald-300 truncate">Wisselgeld klant:</span>
-                                        <span class="text-2xl font-black text-emerald-400 whitespace-nowrap shrink-0 flex items-center tracking-tight">
-                                            <span class="mr-1">€</span><span>{{ number_format($changeCents / 100, 2, ',', '.') }}</span>
-                                        </span>
+                                    <div class="p-4 rounded-2xl bg-emerald-500/15 border-2 border-emerald-500/40 flex flex-col justify-center shadow-md">
+                                        <span class="text-xs uppercase tracking-wider font-bold text-emerald-300 block">Wisselgeld klant:</span>
+                                        <div class="text-3xl sm:text-4xl font-black text-emerald-400 mt-1 whitespace-nowrap flex items-center tracking-tight">
+                                            € {{ number_format($changeCents / 100, 2, ',', '.') }}
+                                        </div>
                                     </div>
                                 @else
-                                    <div class="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-400 flex justify-between items-center gap-2">
-                                        <span class="truncate">Nog te ontvangen:</span>
-                                        <span class="font-bold text-amber-400 text-sm whitespace-nowrap shrink-0 flex items-center">
-                                            <span class="mr-1">€</span><span>{{ number_format(($cardTotal - $tenderedCents) / 100, 2, ',', '.') }}</span>
-                                        </span>
+                                    <div class="p-4 rounded-2xl bg-slate-800/80 border border-slate-700 text-slate-400 flex flex-col justify-center">
+                                        <span class="text-xs uppercase tracking-wider font-bold text-slate-400 block">Nog te ontvangen:</span>
+                                        <div class="text-3xl sm:text-4xl font-black text-amber-400 mt-1 whitespace-nowrap flex items-center">
+                                            € {{ number_format(($cardTotal - $tenderedCents) / 100, 2, ',', '.') }}
+                                        </div>
                                     </div>
                                 @endif
 
                                 <!-- Drinks Crossed off Notice (if any) -->
                                 @if($drinksTotal > 0)
-                                    <div class="p-1.5 rounded-lg bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-300 text-xs text-center font-bold">
+                                    <div class="p-2.5 rounded-xl bg-fuchsia-950/40 border border-fuchsia-500/40 text-fuchsia-300 text-xs sm:text-sm text-center font-bold">
                                         Direct doorstrepen: <strong class="text-white">{{ $drinksVakjes }} vakjes</strong>
                                     </div>
                                 @endif
@@ -315,39 +283,39 @@
                                 @endif
                             </div>
 
-                            <!-- Right Column: Touchscreen Ontvangen Bedrag + Keypad -->
-                            <div class="flex flex-col bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                                <div class="flex justify-between items-center mb-1">
-                                    <label class="text-xs font-semibold text-slate-400">Ontvangen bedrag (€):</label>
+                            <!-- Right Column: Touchscreen Ontvangen Bedrag + Large Keypad -->
+                            <div class="md:col-span-7 flex flex-col bg-slate-950/80 p-3 rounded-2xl border border-slate-800">
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <label class="text-xs sm:text-sm font-bold text-slate-300">Ontvangen bedrag (€):</label>
                                     <button type="button"
                                             wire:click="clearCashTendered"
-                                            class="px-2.5 py-0.5 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 active:scale-95 rounded border border-slate-600 transition-all">
+                                            class="px-3 py-1 text-xs sm:text-sm font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 active:scale-95 rounded-lg border border-slate-600 transition-all">
                                         Wissen
                                     </button>
                                 </div>
                                 
                                 <!-- Amount Display -->
-                                <div class="bg-slate-900 border-2 border-slate-700 rounded-xl px-3 py-1 flex items-center justify-between shadow-inner mb-2">
-                                    <span class="text-slate-400 font-bold text-lg">€</span>
-                                    <div class="text-2xl font-black text-white font-mono tracking-wider text-right">
+                                <div class="bg-slate-900 border-2 border-slate-700 rounded-xl px-4 py-2 flex items-center justify-between shadow-inner mb-2.5">
+                                    <span class="text-slate-400 font-bold text-xl sm:text-2xl">€</span>
+                                    <div class="text-3xl sm:text-4xl font-black text-white font-mono tracking-wider text-right">
                                         {{ $cashTendered !== '' ? str_replace('.', ',', $cashTendered) : '0,00' }}
                                     </div>
                                 </div>
 
-                                <!-- Keypad 3x4 Grid -->
-                                <div class="grid grid-cols-3 gap-1.5">
-                                    <button type="button" wire:click="appendCashDigit('7')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">7</button>
-                                    <button type="button" wire:click="appendCashDigit('8')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">8</button>
-                                    <button type="button" wire:click="appendCashDigit('9')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">9</button>
-                                    <button type="button" wire:click="appendCashDigit('4')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">4</button>
-                                    <button type="button" wire:click="appendCashDigit('5')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">5</button>
-                                    <button type="button" wire:click="appendCashDigit('6')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">6</button>
-                                    <button type="button" wire:click="appendCashDigit('1')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">1</button>
-                                    <button type="button" wire:click="appendCashDigit('2')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">2</button>
-                                    <button type="button" wire:click="appendCashDigit('3')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">3</button>
-                                    <button type="button" wire:click="appendCashDigit(',')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-slate-300 rounded-xl shadow transition-all active:scale-95">,</button>
-                                    <button type="button" wire:click="appendCashDigit('0')" class="h-11 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95">0</button>
-                                    <button type="button" wire:click="backspaceCashTendered" class="h-11 bg-slate-800 hover:bg-red-900 text-red-400 rounded-xl shadow transition-all active:scale-95 flex items-center justify-center font-black text-xl" title="Backspace">⌫</button>
+                                <!-- Keypad 3x4 Grid with LARGE, touchscreen-friendly buttons -->
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button type="button" wire:click="appendCashDigit('7')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">7</button>
+                                    <button type="button" wire:click="appendCashDigit('8')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">8</button>
+                                    <button type="button" wire:click="appendCashDigit('9')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">9</button>
+                                    <button type="button" wire:click="appendCashDigit('4')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">4</button>
+                                    <button type="button" wire:click="appendCashDigit('5')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">5</button>
+                                    <button type="button" wire:click="appendCashDigit('6')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">6</button>
+                                    <button type="button" wire:click="appendCashDigit('1')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">1</button>
+                                    <button type="button" wire:click="appendCashDigit('2')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">2</button>
+                                    <button type="button" wire:click="appendCashDigit('3')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">3</button>
+                                    <button type="button" wire:click="appendCashDigit(',')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-slate-300 rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">,</button>
+                                    <button type="button" wire:click="appendCashDigit('0')" class="h-14 sm:h-16 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center">0</button>
+                                    <button type="button" wire:click="backspaceCashTendered" class="h-14 sm:h-16 bg-slate-800 hover:bg-red-900 text-red-400 rounded-xl shadow transition-all active:scale-95 flex items-center justify-center font-black text-2xl sm:text-3xl" title="Backspace">⌫</button>
                                 </div>
                             </div>
                         </div>
