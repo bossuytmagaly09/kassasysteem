@@ -65,19 +65,29 @@ class KoppelPoef extends Component
     }
 
     #[On('card-scanned')]
-    public function handleCardScanned(string $cardUid): void
+    public function handleCardScanned(mixed $cardUid = null): void
     {
         if (! $this->isOpen) {
             return;
         }
 
-        $clean = trim($cardUid);
+        if (is_array($cardUid)) {
+            $cardUid = $cardUid['cardUid'] ?? $cardUid['uid'] ?? reset($cardUid) ?? '';
+        }
+
+        $clean = trim((string) $cardUid);
         if ($clean === '') {
             return;
         }
 
-        $this->cardUid = $clean;
-        $this->message = "Scancode ontvangen: {$clean}. Kies een lid en type om te koppelen.";
+        $stripped = (string) preg_replace('/^(?:card\s*uid|uid|card|tag|nfc|id)\s*[:=\-]\s*/i', '', $clean);
+        $stripped = trim($stripped);
+        if (preg_match('/^[0-9A-Fa-f]{2}(?:[\s:\-][0-9A-Fa-f]{2}){2,15}$/', $stripped)) {
+            $stripped = strtoupper((string) preg_replace('/[\s:\-]/', '', $stripped));
+        }
+
+        $this->cardUid = $stripped !== '' ? $stripped : $clean;
+        $this->message = "Scancode ontvangen: {$this->cardUid}. Kies een lid en type om te koppelen.";
         $this->errorMessage = null;
         $this->dispatch('nfc-beep', success: true);
     }
@@ -88,6 +98,12 @@ class KoppelPoef extends Component
         $this->message = null;
 
         $cleanUid = trim($this->cardUid);
+        $stripped = (string) preg_replace('/^(?:card\s*uid|uid|card|tag|nfc|id)\s*[:=\-]\s*/i', '', $cleanUid);
+        $stripped = trim($stripped);
+        if (preg_match('/^[0-9A-Fa-f]{2}(?:[\s:\-][0-9A-Fa-f]{2}){2,15}$/', $stripped)) {
+            $stripped = strtoupper((string) preg_replace('/[\s:\-]/', '', $stripped));
+        }
+        $cleanUid = $stripped !== '' ? $stripped : $cleanUid;
 
         if (! $this->selectedPoefId) {
             $this->errorMessage = 'Selecteer eerst een lid (poef).';

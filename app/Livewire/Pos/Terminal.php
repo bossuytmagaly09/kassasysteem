@@ -6,6 +6,7 @@ use App\Models\Card;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Order;
+use App\Models\Poef;
 use App\Models\Product;
 use App\PaymentMode;
 use App\Services\BeheerApiService;
@@ -563,22 +564,114 @@ class Terminal extends Component
 
     /**
      * Process a scanned NFC card.
-     * When awaiting payment: completes the sale and links poef.
-     * When idle / no active checkout: performs a Saldo & Poef Check for the customer!
+     * When cart has items or awaiting payment: completes the sale and links poef.
+     * When idle / no items: performs a Saldo & Poef Check for the customer.
      */
     #[On('card-scanned')]
-    public function handleScan(string $cardUid): void
+    public function handleScan(mixed $cardUid = null): void
     {
-        $cardUid = trim($cardUid);
+        if (is_array($cardUid)) {
+            $cardUid = $cardUid['cardUid'] ?? $cardUid['uid'] ?? reset($cardUid) ?? '';
+        }
+        $cardUid = trim((string) $cardUid);
         if ($cardUid === '') {
             return;
         }
 
-        if ($this->awaitingPayment) {
+        if (! empty($this->orderItems) || $this->awaitingPayment) {
             $this->processPaymentScan($cardUid);
         } else {
             $this->processSaldoCheckScan($cardUid);
         }
+    }
+
+    /**
+     * Find an active card by various UID formats (raw, hex-stripped, hashes).
+     */
+    private function findCard(string $rawInput): ?Card
+    {
+        $raw = trim($rawInput);
+        if ($raw === '') {
+            return null;
+        }
+
+        // 1. Strip common reader/Arduino prefixes like "Card UID:", "UID:", "Card:", "Tag:", "NFC:", "ID:"
+        $cleaned = (string) preg_replace('/^(?:card\s*uid|uid|card|tag|nfc|id)\s*[:=\-]\s*/i', '', $raw);
+        $cleaned = trim($cleaned);
+
+        // 2. Build candidate variations
+        $candidates = array_unique(array_filter([
+            $raw,
+            strtoupper($raw),
+            strtolower($raw),
+            $cleaned,
+            strtoupper($cleaned),
+            strtolower($cleaned),
+        ]));
+
+        // Check if $cleaned has hex separators ("04 01 71 42 B9 12 91" or "04:01:71:42:B9:12:91" or "04-01-71-42-B9-12-91")
+        $hexOnly = strtoupper((string) preg_replace('/[\s:\-]/', '', $cleaned));
+        if ($hexOnly !== '' && ctype_xdigit($hexOnly)) {
+            $candidates[] = $hexOnly;
+            $candidates[] = strtolower($hexOnly);
+        }
+
+        // Also strict hex extraction on cleaned string (ONLY after prefix was removed!)
+        $strictHex = strtoupper((string) preg_replace('/[^A-Fa-f0-9]/', '', $cleaned));
+        if ($strictHex !== '' && strlen($strictHex) >= 4) {
+            $candidates[] = $strictHex;
+            $candidates[] = strtolower($strictHex);
+        }
+
+        $candidates = array_values(array_unique(array_filter($candidates)));
+
+        // 3. Hashes
+        $hashes = [];
+        foreach ($candidates as $cand) {
+            $h = BeheerApiService::hashCardUid($cand);
+            if ($h) {
+                $hashes[] = $h;
+            }
+        }
+        $hashes = array_values(array_unique($hashes));
+
+        // 4. Query card
+        $card = Card::with('poef')
+            ->where(function ($query) use ($candidates, $hashes): void {
+                $query->whereIn('uid', $candidates);
+                if (! empty($hashes)) {
+                    $query->orWhereIn('card_hash', $hashes);
+                }
+            })
+            ->where(function ($query): void {
+                $query->whereNull('status')->orWhere('status', 'active');
+            })
+            ->first();
+
+        // 5. If card is found but poef relation is missing, attempt recovery via poef_id, hangaar_user_id, drank_user_id
+        if ($card && ! $card->poef) {
+            $poef = Poef::where(function ($q) use ($card): void {
+                if ($card->poef_id) {
+                    $q->where('id', $card->poef_id);
+                }
+                if ($card->hangaar_user_id) {
+                    $q->orWhere('hangaar_user_id', $card->hangaar_user_id)
+                        ->orWhere('external_id', $card->hangaar_user_id);
+                }
+                if ($card->drank_user_id) {
+                    $q->orWhere('drank_user_id', $card->drank_user_id)
+                        ->orWhere('external_id', $card->drank_user_id);
+                }
+            })->first();
+
+            if ($poef) {
+                $card->poef_id = $poef->id;
+                $card->save();
+                $card->setRelation('poef', $poef);
+            }
+        }
+
+        return $card;
     }
 
     private function processPaymentScan(string $cardUid): void
@@ -591,26 +684,22 @@ class Terminal extends Component
             return;
         }
 
-        $cardUid = trim($cardUid);
-        $normalizedUid = strtoupper((string) preg_replace('/[^A-Fa-f0-9]/', '', $cardUid));
-        $hashes = array_filter([
-            BeheerApiService::hashCardUid($cardUid),
-            $normalizedUid !== '' ? BeheerApiService::hashCardUid($normalizedUid) : null,
-        ]);
+        if ($this->hasDrankkaartInCart()) {
+            $this->paymentError = 'Een consumptiekaart aankoop kan enkel via Consumptiekaart (Cash of QR) afgerekend worden.';
+            $this->dispatch('nfc-beep', success: false);
 
-        $card = Card::with('poef')
-            ->where(function ($query) use ($cardUid, $normalizedUid, $hashes): void {
-                $query->whereIn('uid', array_filter([$cardUid, $normalizedUid]))
-                    ->orWhereIn('card_hash', $hashes);
-            })
-            ->where('status', 'active')
-            ->first();
+            return;
+        }
 
+        $card = $this->findCard($cardUid);
         $poef = $card?->poef;
 
         // Enkel als er een kaart of badge gekoppeld is aan een actieve poef mag er afgerekend worden
         if (! $card || ! $poef) {
-            $this->paymentError = 'Geen actieve poef gekoppeld aan deze kaart of badge ('.($normalizedUid ?: $cardUid).').';
+            $cleaned = trim((string) preg_replace('/^(?:card\s*uid|uid|card|tag|nfc|id)\s*[:=\-]\s*/i', '', $cardUid));
+            $displayUid = preg_replace('/[\s:\-]/', '', $cleaned) ?: $cardUid;
+            $this->paymentError = 'Geen actieve poef gekoppeld aan deze kaart of badge ('.$displayUid.').';
+            $this->awaitingPayment = true;
             $this->dispatch('nfc-beep', success: false);
             $this->broadcastCustomerDisplayState('error');
 
@@ -649,20 +738,7 @@ class Terminal extends Component
         }
 
         $event = Event::active();
-        $cardUid = trim($cardUid);
-        $normalizedUid = strtoupper((string) preg_replace('/[^A-Fa-f0-9]/', '', $cardUid));
-        $hashes = array_filter([
-            BeheerApiService::hashCardUid($cardUid),
-            $normalizedUid !== '' ? BeheerApiService::hashCardUid($normalizedUid) : null,
-        ]);
-
-        $card = Card::with('poef')
-            ->where(function ($query) use ($cardUid, $normalizedUid, $hashes): void {
-                $query->whereIn('uid', array_filter([$cardUid, $normalizedUid]))
-                    ->orWhereIn('card_hash', $hashes);
-            })
-            ->where('status', 'active')
-            ->first();
+        $card = $this->findCard($cardUid);
 
         if ($card && $card->poef) {
             $poef = $card->poef;

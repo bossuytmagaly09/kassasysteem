@@ -376,6 +376,60 @@ class TerminalTest extends TestCase
         ]);
     }
 
+    public function test_card_can_be_scanned_directly_without_clicking_start_payment(): void
+    {
+        $poef = Poef::create([
+            'external_id' => 888,
+            'name' => 'Direct Scan Lid',
+            'discount_percentage' => 0,
+        ]);
+
+        $card = Card::create([
+            'poef_id' => $poef->id,
+            'uid' => '04017142B91291',
+            'card_type' => 'badge',
+            'status' => 'active',
+        ]);
+
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('handleScan', 'Card UID: 04 01 71 42 B9 12 91')
+            ->assertSet('paymentSuccess', true)
+            ->assertSet('scannedPoefName', 'Direct Scan Lid')
+            ->assertDispatched('nfc-beep', success: true);
+
+        $this->assertDatabaseHas('orders', [
+            'event_id' => $this->event->id,
+            'poef_id' => $poef->id,
+            'card_id' => $card->id,
+            'card_uid' => '04017142B91291',
+            'payment_method' => 'scanner',
+        ]);
+    }
+
+    public function test_handle_scan_accepts_array_payload_from_event(): void
+    {
+        $poef = Poef::create([
+            'external_id' => 889,
+            'name' => 'Array Scan Lid',
+            'discount_percentage' => 0,
+        ]);
+
+        Card::create([
+            'poef_id' => $poef->id,
+            'uid' => '04AABBCCDDEEFF',
+            'card_type' => 'badge',
+            'status' => 'active',
+        ]);
+
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('handleScan', ['cardUid' => '04AABBCCDDEEFF', 'uid' => '04AABBCCDDEEFF'])
+            ->assertSet('paymentSuccess', true)
+            ->assertSet('scannedPoefName', 'Array Scan Lid')
+            ->assertDispatched('nfc-beep', success: true);
+    }
+
     public function test_touchscreen_cash_numpad_manipulates_tendered_amount(): void
     {
         Livewire::test(Terminal::class)

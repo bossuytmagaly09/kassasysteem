@@ -248,6 +248,12 @@ export class NfcReader extends EventTarget {
     if (hexMatch) {
       const extracted = hexMatch[1].replace(/[\s:\-]/g, '').toUpperCase();
       this._handleCard(extracted, 'nfc');
+      return;
+    }
+
+    // 7. Fallback voor overige reader formaten
+    if (cleaned.length >= 3) {
+      this._handleCard(cleaned, 'raw');
     }
   }
 

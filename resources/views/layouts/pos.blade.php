@@ -83,14 +83,8 @@
         // 1.2s cooldown en 1.2s aanwezigheidsdetectie voor snelle reactietijd en onmiddellijk afrekenen
         const SAME_CARD_COOLDOWN_MS = 1200;
         const CARD_HOLDING_TIMEOUT_MS = 1200;
-        let lastHandledUid = null;
-        let lastHandledTime = 0;
-        let lastSeenTime = 0;
 
         function resetNfcCooldown() {
-            lastHandledUid = null;
-            lastHandledTime = 0;
-            lastSeenTime = 0;
             if (window.__nfcReader) {
                 window.__nfcReader.resetCooldown();
             }
@@ -100,31 +94,6 @@
         function dispatchCardScanned(rawUid) {
             const clean = String(rawUid || '').trim();
             if (!clean || clean.length < 3) return;
-
-            const now = Date.now();
-
-            // Als dezelfde kaart continue op de lezer ligt (detectiepuls):
-            if (lastHandledUid === clean) {
-                const timeSinceLastSeen = now - lastSeenTime;
-                lastSeenTime = now;
-
-                if (timeSinceLastSeen < CARD_HOLDING_TIMEOUT_MS) {
-                    return;
-                }
-
-                if (now - lastHandledTime < SAME_CARD_COOLDOWN_MS) {
-                    return;
-                }
-            }
-
-            // Snelle ruis-debounce (< 300ms)
-            if (now - lastHandledTime < 300) {
-                return;
-            }
-
-            lastHandledUid = clean;
-            lastHandledTime = now;
-            lastSeenTime = now;
 
             Livewire.dispatch('card-scanned', { cardUid: clean, uid: clean });
         }
@@ -160,6 +129,10 @@
             });
 
             window.addEventListener('nfc-cancel-payment', () => {
+                resetNfcCooldown();
+            });
+
+            window.addEventListener('payment-success', () => {
                 resetNfcCooldown();
             });
         }
