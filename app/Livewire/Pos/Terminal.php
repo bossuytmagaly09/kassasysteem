@@ -13,6 +13,8 @@ use App\Services\BeheerApiService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\On;
@@ -946,8 +948,10 @@ class Terminal extends Component
         $device = (string) config('beheer.device_name', 'kassa-1');
         $cardProductId = $this->resolvePunchCardProductId($event);
 
-        DB::transaction(function () use ($event, $methodValue, $cardUid, $cardHashValue, $orderUuid, $device, $vakjes, $total, $poefId, $cardId, $cardProductId): void {
-            $order = Order::create([
+        $createdOrder = null;
+
+        DB::transaction(function () use ($event, $methodValue, $cardUid, $cardHashValue, $orderUuid, $device, $vakjes, $total, $poefId, $cardId, $cardProductId, &$createdOrder): void {
+            $createdOrder = Order::create([
                 'uuid' => $orderUuid,
                 'event_id' => $event->id,
                 'poef_id' => $poefId,
@@ -962,7 +966,7 @@ class Terminal extends Component
                 'beheer_status' => 'pending',
             ]);
 
-            $order->items()->createMany(array_map(fn (array $item): array => [
+            $createdOrder->items()->createMany(array_map(fn (array $item): array => [
                 'product_id' => $item['product_id'] ?? ((! empty($item['is_drankkaart']) || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])) ? $cardProductId : null),
                 'product_name' => $item['name'],
                 'product_price' => $item['price'],
@@ -972,12 +976,102 @@ class Terminal extends Component
 
         $this->orderItems = [];
 
+        // 1. Direct synchroniseren naar Beheerdatabase indien externe connectie actief is
+        if ($poefId && $createdOrder) {
+            $poefModel = Poef::find($poefId);
+            if ($poefModel) {
+                $this->syncOrderToExternalDb($createdOrder, $event, $poefModel);
+            }
+        }
+
+        // 2. Synchroniseren via Beheer REST API (indien API-token geconfigureerd is)
         try {
             if (! empty(config('beheer.api_token'))) {
                 app(BeheerApiService::class)->syncPendingSales();
             }
         } catch (\Throwable) {
             // Background sync failure does not block the sale
+        }
+    }
+
+    private function syncOrderToExternalDb(Order $order, Event $event, Poef $poef): void
+    {
+        try {
+            if (! $this->isExternalDbAvailable() || ! $poef->external_id) {
+                return;
+            }
+
+            if (! Schema::connection('external')->hasTable('users')) {
+                return;
+            }
+
+            $amountEuro = round($order->total_amount / 100, 2);
+
+            DB::connection('external')->transaction(function () use ($order, $event, $poef, $amountEuro): void {
+                $user = DB::connection('external')->table('users')->where('id', $poef->external_id)->first();
+                if (! $user) {
+                    return;
+                }
+
+                $newBalance = round(((float) $user->balance) + $amountEuro, 2);
+
+                DB::connection('external')->table('users')
+                    ->where('id', $user->id)
+                    ->update([
+                        'balance' => $newBalance,
+                        'lifetime_spent' => round(((float) ($user->lifetime_spent ?? 0)) + $amountEuro, 2),
+                    ]);
+
+                if (Schema::connection('external')->hasTable('balance_adjustments')) {
+                    DB::connection('external')->table('balance_adjustments')->insert([
+                        'user_id' => $user->id,
+                        'amount' => $amountEuro,
+                        'note' => "Kassa event: {$event->name} (Bestelling #{$order->id})",
+                        'resulting_balance' => $newBalance,
+                        'ts' => now(),
+                    ]);
+                }
+
+                if (Schema::connection('external')->hasTable('transactions') && Schema::connection('external')->hasTable('products')) {
+                    foreach ($order->items as $item) {
+                        $extProduct = null;
+                        if ($item->product_id) {
+                            $localProd = Product::find($item->product_id);
+                            if ($localProd?->external_id) {
+                                $extProduct = DB::connection('external')->table('products')->where('id', $localProd->external_id)->first();
+                            }
+                        }
+                        if (! $extProduct) {
+                            $extProduct = DB::connection('external')->table('products')->where('name', $item->product_name)->first();
+                        }
+
+                        if ($extProduct) {
+                            for ($i = 0; $i < $item->quantity; $i++) {
+                                DB::connection('external')->table('transactions')->insert([
+                                    'user_id' => $user->id,
+                                    'product_id' => $extProduct->id,
+                                    'ts' => now(),
+                                ]);
+                            }
+                        }
+                    }
+                }
+
+                $order->update(['beheer_status' => 'synced', 'synced_at' => now()]);
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Kon bestelling niet direct naar beheerdatabase pushen: '.$e->getMessage());
+        }
+    }
+
+    private function isExternalDbAvailable(): bool
+    {
+        try {
+            DB::connection('external')->getPdo();
+
+            return true;
+        } catch (\Throwable) {
+            return false;
         }
     }
 
