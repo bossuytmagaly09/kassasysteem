@@ -38,11 +38,15 @@
                 </svg>
             </div>
             <div class="min-w-0">
-                <div class="flex items-center gap-1.5 mb-1">
+                <div class="flex items-center gap-2 mb-1">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300 block leading-none">
-                        Kassa Klantenscherm @if($kassaId !== '1') • Kassa {{ $kassaId }} @endif
+                        Kassa {{ $kassaId }} Klantenscherm
                     </span>
+                    <div class="flex items-center gap-1 bg-slate-900 border border-slate-700/80 rounded-lg p-0.5 ml-1">
+                        <a href="{{ url('/klantenscherm/1') }}" class="px-2 py-0.5 rounded text-[10px] font-black transition-all {{ $kassaId === '1' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white' }}">Kassa 1</a>
+                        <a href="{{ url('/klantenscherm/2') }}" class="px-2 py-0.5 rounded text-[10px] font-black transition-all {{ $kassaId === '2' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white' }}">Kassa 2</a>
+                    </div>
                 </div>
                 <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight truncate capitalize">{{ $eventName ?: 'Kassasysteem' }}</h1>
             </div>

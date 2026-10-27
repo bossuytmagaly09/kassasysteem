@@ -46,6 +46,37 @@
                     </svg>
                     <span>Koppel Poef</span>
                 </button>
+
+                @php
+                    $currentKassa = (string) ($kassaId ?? request('kassa') ?? session('pos_kassa_id', '1'));
+                @endphp
+                <!-- Kassa Switcher -->
+                <div class="flex items-center gap-1 bg-slate-800/80 border border-slate-700/80 rounded-xl p-1 shrink-0">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1.5 hidden xl:inline">Kassa:</span>
+                    <a href="{{ route('pos.index', ['kassa' => '1']) }}"
+                       class="px-2.5 py-1 rounded-lg text-xs font-black transition-all {{ $currentKassa === '1' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700' }}"
+                       title="Schakel over naar Kassa 1">
+                        Kassa 1
+                    </a>
+                    <a href="{{ route('pos.index', ['kassa' => '2']) }}"
+                       class="px-2.5 py-1 rounded-lg text-xs font-black transition-all {{ $currentKassa === '2' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700' }}"
+                       title="Schakel over naar Kassa 2">
+                        Kassa 2
+                    </a>
+                    <a href="{{ route('pos.index', ['kassa' => '3']) }}"
+                       class="px-2.5 py-1 rounded-lg text-xs font-black transition-all {{ $currentKassa === '3' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700' }}"
+                       title="Schakel over naar Kassa 3">
+                        Kassa 3
+                    </a>
+                </div>
+
+                <!-- Link to matching Customer Display -->
+                <a href="{{ route('pos.display', ['kassa' => $currentKassa]) }}" target="_blank"
+                   class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 rounded-xl text-cyan-300 text-xs font-bold transition-all shrink-0"
+                   title="Open Klantenscherm voor Kassa {{ $currentKassa }} in nieuw venster">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    <span>Scherm {{ $currentKassa }} ↗</span>
+                </a>
             </div>
             
             <!-- In-flow Centered Event Name in Navbar (Right in the middle between buttons and clock) -->

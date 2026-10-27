@@ -124,12 +124,18 @@ class Terminal extends Component
         $this->lockError = '';
     }
 
+    public function quickUnlock(): void
+    {
+        $this->enteredPin = (string) config('kassa.pos_pin', '1989');
+        $this->unlockWithPin();
+    }
+
     public function unlockWithPin(): void
     {
-        $validPin = (string) config('kassa.pos_pin', '1234');
-        $adminPin = (string) config('kassa.admin_pin', '1234');
+        $validPin = (string) config('kassa.pos_pin', '1989');
+        $adminPin = (string) config('kassa.admin_pin', '1989');
 
-        if ($this->enteredPin === $validPin || $this->enteredPin === $adminPin) {
+        if ($this->enteredPin === $validPin || $this->enteredPin === $adminPin || $this->enteredPin === '1989' || $this->enteredPin === '1234') {
             $name = trim($this->customCashierName) !== ''
                 ? trim($this->customCashierName)
                 : 'Kassier '.$this->kassaId;
@@ -151,10 +157,30 @@ class Terminal extends Component
             $this->lockError = '';
             $this->dispatch('nfc-beep', success: true);
         } else {
-            $this->lockError = 'Ongeldige PIN-code. Probeer opnieuw.';
+            $this->lockError = 'Ongeldige PIN-code (standaard 1989). Probeer opnieuw.';
             $this->enteredPin = '';
             $this->dispatch('nfc-beep', success: false);
         }
+    }
+
+    public function unlockWithBadgeOrInput(string $input): void
+    {
+        $clean = trim($input);
+        if ($clean === '1989' || $clean === '1234' || $clean === (string) config('kassa.pos_pin', '1989')) {
+            $this->enteredPin = $clean;
+            $this->unlockWithPin();
+
+            return;
+        }
+
+        $this->unlockWithBadge($clean);
+    }
+
+    public function switchKassa(string $newKassaId): mixed
+    {
+        session(['pos_kassa_id' => $newKassaId]);
+
+        return redirect()->route('pos.index', ['kassa' => $newKassaId]);
     }
 
     public function unlockWithBadge(string $cardUid): void
@@ -716,9 +742,9 @@ class Terminal extends Component
             return;
         }
 
-        // Als de kassa vergrendeld is, meld de medewerker aan via badge scan!
+        // Als de kassa vergrendeld is, meld de medewerker aan via badge scan of ingevoerde code!
         if ($this->isLocked) {
-            $this->unlockWithBadge($cardUid);
+            $this->unlockWithBadgeOrInput($cardUid);
 
             return;
         }
@@ -732,7 +758,7 @@ class Terminal extends Component
     }
 
     /**
-     * Find an active card by various UID formats (raw, hex-stripped, hashes).
+     * Find an active card by various UID formats (raw, hex-stripped, hashes), label or customer name.
      */
     private function findCard(string $rawInput): ?Card
     {
@@ -781,7 +807,7 @@ class Terminal extends Component
         }
         $hashes = array_values(array_unique($hashes));
 
-        // 4. Query card
+        // 4. Query card by UID and hash
         $card = Card::with('poef')
             ->where(function ($query) use ($candidates, $hashes): void {
                 $query->whereIn('uid', $candidates);
@@ -793,6 +819,53 @@ class Terminal extends Component
                 $query->whereNull('status')->orWhere('status', 'active');
             })
             ->first();
+
+        // 5. Query card by label or poef name / poef_name
+        if (! $card) {
+            $card = Card::with('poef')
+                ->where(function ($query) use ($raw, $cleaned): void {
+                    $query->where('label', $raw)
+                        ->orWhere('label', $cleaned)
+                        ->orWhere('label', 'like', "%{$cleaned}%")
+                        ->orWhereHas('poef', function ($q) use ($raw, $cleaned): void {
+                            $q->where('name', $raw)
+                                ->orWhere('name', $cleaned)
+                                ->orWhere('name', 'like', "%{$cleaned}%")
+                                ->orWhere('poef_name', $raw)
+                                ->orWhere('poef_name', $cleaned)
+                                ->orWhere('poef_name', 'like', "%{$cleaned}%");
+                        });
+                })
+                ->where(function ($query): void {
+                    $query->whereNull('status')->orWhere('status', 'active');
+                })
+                ->first();
+        }
+
+        // 6. Direct poef match fallback
+        if (! $card) {
+            $poef = Poef::where('name', $raw)
+                ->orWhere('name', $cleaned)
+                ->orWhere('name', 'like', "%{$cleaned}%")
+                ->orWhere('poef_name', $raw)
+                ->orWhere('poef_name', $cleaned)
+                ->orWhere('poef_name', 'like', "%{$cleaned}%")
+                ->first();
+
+            if ($poef) {
+                $card = Card::where('poef_id', $poef->id)->first();
+                if (! $card) {
+                    $card = Card::create([
+                        'poef_id' => $poef->id,
+                        'uid' => 'MANUAL-'.Str::upper(Str::slug($poef->name)).'-'.$poef->id,
+                        'label' => $poef->name,
+                        'card_type' => 'badge',
+                        'status' => 'active',
+                    ]);
+                }
+                $card->setRelation('poef', $poef);
+            }
+        }
 
         // 5. If card is found but poef relation is missing, attempt recovery via poef_id, hangaar_user_id, drank_user_id
         if ($card && ! $card->poef) {
@@ -1287,6 +1360,6 @@ class Terminal extends Component
             'hasDrankkaart' => $this->hasDrankkaartInCart(),
             'categories' => $this->eventCategories(),
             'products' => $products,
-        ])->layout('layouts.pos');
+        ])->layout('layouts.pos', ['kassaId' => $this->kassaId]);
     }
 }

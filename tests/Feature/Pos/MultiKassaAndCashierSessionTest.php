@@ -66,16 +66,16 @@ class MultiKassaAndCashierSessionTest extends TestCase
     public function test_kassa_terminal_can_be_unlocked_with_pin(): void
     {
         config(['kassa.enforce_pos_lock_in_tests' => true]);
-        config(['kassa.pos_pin' => '1234']);
+        config(['kassa.pos_pin' => '1989']);
 
         $component = Livewire::test(Terminal::class, ['kassa' => '2'])
             ->assertSet('isLocked', true)
             ->assertSet('kassaId', '2')
             ->set('customCashierName', 'Bjarne Kassier')
             ->call('appendLockPin', '1')
-            ->call('appendLockPin', '2')
-            ->call('appendLockPin', '3')
-            ->call('appendLockPin', '4')
+            ->call('appendLockPin', '9')
+            ->call('appendLockPin', '8')
+            ->call('appendLockPin', '9')
             ->assertSet('isLocked', false)
             ->assertSet('cashierName', 'Bjarne Kassier');
 
@@ -85,6 +85,37 @@ class MultiKassaAndCashierSessionTest extends TestCase
             'auth_method' => 'pin',
             'logged_out_at' => null,
         ]);
+    }
+
+    public function test_kassa_terminal_quick_unlock_with_1989(): void
+    {
+        config(['kassa.enforce_pos_lock_in_tests' => true]);
+
+        Livewire::test(Terminal::class, ['kassa' => '1'])
+            ->assertSet('isLocked', true)
+            ->call('quickUnlock')
+            ->assertSet('isLocked', false);
+    }
+
+    public function test_kassa_terminal_can_be_unlocked_with_badge_or_input(): void
+    {
+        config(['kassa.enforce_pos_lock_in_tests' => true]);
+
+        Livewire::test(Terminal::class, ['kassa' => '1'])
+            ->assertSet('isLocked', true)
+            ->call('unlockWithBadgeOrInput', '1989')
+            ->assertSet('isLocked', false);
+    }
+
+    public function test_payment_resolves_card_by_label(): void
+    {
+        $this->card->update(['label' => 'Hangaar Pas Bjarne']);
+
+        Livewire::test(Terminal::class, ['kassa' => '1'])
+            ->call('addToOrder', $this->cola->id)
+            ->call('startPayment')
+            ->call('handleScan', 'Hangaar Pas Bjarne')
+            ->assertSet('paymentSuccess', true);
     }
 
     public function test_kassa_terminal_can_be_unlocked_with_badge_scan(): void

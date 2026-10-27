@@ -3,35 +3,65 @@
     @if($isLocked)
         <!-- Full-screen Cashier Lock Screen -->
         <div wire:key="pos-lock-screen"
-             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 sm:p-6 select-none"
-             x-data
+             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 sm:p-6 select-none overflow-y-auto"
+             x-data="{
+                 handleKey(e) {
+                     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+                     if (e.key >= '0' && e.key <= '9') {
+                         $wire.appendLockPin(e.key);
+                     } else if (e.key === 'Enter') {
+                         $wire.unlockWithPin();
+                     } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                         $wire.clearLockPin();
+                     }
+                 }
+             }"
+             @keydown.window="handleKey($event)"
              @keydown.escape.window="$wire.clearLockPin()">
             
-            <div class="bg-slate-900 border-2 border-indigo-500/50 p-6 sm:p-8 rounded-3xl shadow-2xl max-w-md w-full flex flex-col items-center text-center relative overflow-hidden">
+            <div class="bg-slate-900 border-2 border-indigo-500/50 p-6 sm:p-7 rounded-3xl shadow-2xl max-w-md w-full flex flex-col items-center text-center relative overflow-hidden my-auto">
                 
-                <!-- Register Badge -->
-                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 font-bold text-sm mb-4">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Kassa {{ $kassaId }}</span>
+                <!-- Register Switcher (Kassa 1 / Kassa 2 / Kassa 3) -->
+                <div class="flex items-center justify-between w-full mb-3 pb-3 border-b border-slate-800">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Kassa Keuze:</span>
+                    <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-700">
+                        @foreach(['1', '2', '3'] as $kid)
+                            <button type="button"
+                                    wire:click="switchKassa('{{ $kid }}')"
+                                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all {{ $kassaId === $kid ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
+                                Kassa {{ $kid }}
+                            </button>
+                        @endforeach
+                    </div>
                 </div>
 
                 <!-- Icon -->
-                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-4 shadow-xl shadow-indigo-500/25 border border-indigo-400/40 flex items-center justify-center text-white mb-4">
-                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-3.5 shadow-xl shadow-indigo-500/25 border border-indigo-400/40 flex items-center justify-center text-white mb-2">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke-width="2"/>
                         <path d="M7 11V7a5 5 0 0110 0v4" stroke-width="2"/>
                     </svg>
                 </div>
 
-                <h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">
-                    Kassa Vergrendeld
+                <h2 class="text-2xl font-black text-white tracking-tight mb-0.5">
+                    Kassa {{ $kassaId }} Inloggen
                 </h2>
-                <p class="text-xs sm:text-sm text-slate-400 mb-4">
-                    Scan uw personeelsbadge of toets uw pincode in om te starten.
+                <p class="text-xs text-slate-400 mb-3">
+                    Scan badge, typ kaart/naam of voer pincode in (standaard <strong>1989</strong>).
                 </p>
 
+                <!-- Badge Scan / Type Input -->
+                <div class="w-full mb-2.5 text-left">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Badge Scannen of Kaart / Naam:</label>
+                    <input type="text"
+                           x-ref="lockBadgeInput"
+                           wire:keydown.enter="unlockWithBadgeOrInput($event.target.value)"
+                           placeholder="Scan personeelsbadge of typ + Enter"
+                           class="w-full bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 text-center">
+                </div>
+
                 <!-- Optional Cashier Name input -->
-                <div class="w-full mb-3 text-left">
+                <div class="w-full mb-2.5 text-left">
                     <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Uw Naam (optioneel):</label>
                     <input type="text"
                            wire:model="customCashierName"
@@ -40,45 +70,53 @@
                 </div>
 
                 <!-- PIN dots indicator -->
-                <div class="flex items-center justify-center gap-3 mb-4 py-2 px-6 rounded-2xl bg-slate-950/70 border border-slate-800 w-full">
+                <div class="flex items-center justify-center gap-3 mb-3 py-1.5 px-6 rounded-2xl bg-slate-950/70 border border-slate-800 w-full">
                     @for($i = 0; $i < 4; $i++)
-                        <div class="w-4 h-4 rounded-full transition-all duration-150 {{ strlen($enteredPin) > $i ? 'bg-indigo-400 scale-110 shadow-lg shadow-indigo-500/50' : 'bg-slate-700' }}"></div>
+                        <div class="w-3.5 h-3.5 rounded-full transition-all duration-150 {{ strlen($enteredPin) > $i ? 'bg-indigo-400 scale-110 shadow-lg shadow-indigo-500/50' : 'bg-slate-700' }}"></div>
                     @endfor
                 </div>
 
                 @if($lockError)
-                    <p class="text-red-400 text-xs font-semibold mb-3">{{ $lockError }}</p>
+                    <p class="text-red-400 text-xs font-semibold mb-2">{{ $lockError }}</p>
                 @endif
 
                 <!-- Keypad (3x4 grid) -->
-                <div class="grid grid-cols-3 gap-2.5 w-full mb-3">
+                <div class="grid grid-cols-3 gap-2 w-full mb-2">
                     @foreach(['1', '2', '3', '4', '5', '6', '7', '8', '9'] as $digit)
                         <button type="button"
                                 wire:click="appendLockPin('{{ $digit }}')"
-                                class="h-14 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl font-black text-white rounded-2xl shadow transition-all active:scale-95 flex items-center justify-center border border-slate-700/60">
+                                class="h-12 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center border border-slate-700/60">
                             {{ $digit }}
                         </button>
                     @endforeach
                     <button type="button"
                             wire:click="clearLockPin"
-                            class="h-14 bg-slate-800 hover:bg-red-950 text-red-400 font-black rounded-2xl text-lg flex items-center justify-center border border-slate-700/60 active:scale-95 transition-all">
+                            class="h-12 bg-slate-800 hover:bg-red-950 text-red-400 font-black rounded-xl text-base flex items-center justify-center border border-slate-700/60 active:scale-95 transition-all">
                         C
                     </button>
                     <button type="button"
                             wire:click="appendLockPin('0')"
-                            class="h-14 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl font-black text-white rounded-2xl shadow transition-all active:scale-95 flex items-center justify-center border border-slate-700/60">
+                            class="h-12 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-xl font-black text-white rounded-xl shadow transition-all active:scale-95 flex items-center justify-center border border-slate-700/60">
                         0
                     </button>
                     <button type="button"
                             wire:click="unlockWithPin"
-                            class="h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black rounded-2xl text-base flex items-center justify-center shadow-lg active:scale-95 transition-all">
+                            class="h-12 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black rounded-xl text-sm flex items-center justify-center shadow-lg active:scale-95 transition-all">
                         OK
                     </button>
                 </div>
 
-                <div class="text-[11px] text-slate-500 flex items-center gap-1.5 mt-1">
-                    <svg class="w-3.5 h-3.5 text-indigo-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
-                    <span>NFC scanner actief — scan badge om direct te starten</span>
+                <div class="flex items-center justify-between w-full mt-2 pt-2 border-t border-slate-800 text-xs">
+                    <button type="button"
+                            wire:click="quickUnlock"
+                            class="text-indigo-400 hover:text-indigo-300 font-bold underline">
+                        Snel openen (1989)
+                    </button>
+                    <button type="button"
+                            @click="connectNfc()"
+                            class="px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-300 font-semibold text-xs">
+                        Scanner Verbinden
+                    </button>
                 </div>
             </div>
         </div>
@@ -178,17 +216,17 @@
                     <span>Winkelmandje</span>
                 </h2>
                 <div class="text-xs text-indigo-300 font-semibold flex items-center gap-1.5 mt-1 truncate">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-                    <span class="truncate">Kassa {{ $kassaId }} • {{ $cashierName ?: 'Medewerker' }}</span>
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 animate-pulse"></span>
+                    <span class="truncate">Kassa {{ $kassaId }} • Ingelogd: {{ $cashierName ?: 'Medewerker' }}</span>
                 </div>
             </div>
             <div class="flex gap-2 items-center shrink-0">
                 <button type="button"
                         wire:click="lockKassa"
-                        class="px-2.5 py-1.5 bg-slate-800 hover:bg-amber-950/40 border border-slate-600 hover:border-amber-500/50 rounded-xl text-xs font-bold text-slate-300 hover:text-amber-300 transition-all flex items-center gap-1.5 shadow-sm"
-                        title="Kassa vergrendelen">
-                    <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                    <span>Vergrendel</span>
+                        class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-red-500/50 rounded-xl text-xs font-bold text-slate-300 hover:text-red-300 transition-all flex items-center gap-1.5 shadow-sm"
+                        title="Kassier afmelden">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    <span>Afmelden</span>
                 </button>
                 <button type="button" wire:click="clearOrder" class="p-2 bg-slate-800 text-slate-400 hover:text-red-400 rounded-full transition-colors" title="Winkelmandje leegmaken">
                     <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -607,7 +645,7 @@
                 </div>
 
                 <h3 class="text-3xl font-black text-indigo-300 mb-2">Wachten op kaart…</h3>
-                <p class="text-slate-400 text-base mb-6">Houd de kaart van de klant tegen de scanner.</p>
+                <p class="text-slate-400 text-base mb-6">Houd de kaart van de klant tegen de scanner of typ kaart/naam.</p>
 
                 <div class="text-5xl font-black text-white mb-6">
                     € {{ number_format($total / 100, 2, ',', '.') }}
@@ -619,7 +657,7 @@
                     id="scan-input"
                     type="text"
                     autocomplete="off"
-                    placeholder="Kaartnummer (scanner of typen + Enter)"
+                    placeholder="Kaartnummer, badge of naam klant + Enter"
                     @keydown.enter.prevent="if (code.trim() !== '') { $wire.handleScan(code); code = ''; }"
                     class="w-full mb-4 bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-center text-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400">
 

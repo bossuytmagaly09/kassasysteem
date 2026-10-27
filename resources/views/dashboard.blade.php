@@ -24,30 +24,56 @@
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                 
                 <!-- Kassa Module -->
-                <a href="{{ route('pos.index') }}" class="group relative block p-4 sm:p-6 md:p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl md:rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-indigo-500/50 transition-all duration-300 hover:-translate-y-1 md:hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]">
-                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div class="group relative block p-4 sm:p-6 md:p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl md:rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)] flex flex-col justify-between">
+                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     
-                    <div class="relative flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-indigo-500/20 rounded-xl md:rounded-2xl mb-3 sm:mb-5 md:mb-6 mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-indigo-500/30 shadow-inner">
-                        <svg class="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-indigo-400 group-hover:text-indigo-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                        </svg>
+                    <div>
+                        <a href="{{ route('pos.index', ['kassa' => '1']) }}" class="block">
+                            <div class="relative flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-indigo-500/20 rounded-xl md:rounded-2xl mb-3 sm:mb-5 md:mb-6 mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-indigo-500/30 shadow-inner">
+                                <svg class="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-indigo-400 group-hover:text-indigo-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="relative text-base sm:text-lg md:text-2xl font-bold text-slate-100 mb-1 sm:mb-2 text-center group-hover:text-indigo-200 transition-colors">Kassa Systeem</h3>
+                            <p class="relative text-slate-400 text-center text-xs sm:text-sm leading-relaxed group-hover:text-slate-300 transition-colors line-clamp-2 sm:line-clamp-none">Point of Sale interface voor touchscreens.</p>
+                        </a>
                     </div>
-                    <h3 class="relative text-base sm:text-lg md:text-2xl font-bold text-slate-100 mb-1 sm:mb-2 text-center group-hover:text-indigo-200 transition-colors">Kassa Systeem</h3>
-                    <p class="relative text-slate-400 text-center text-xs sm:text-sm leading-relaxed group-hover:text-slate-300 transition-colors line-clamp-2 sm:line-clamp-none">Point of Sale interface voor touchscreens.</p>
-                </a>
+
+                    <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-center gap-2 relative z-10">
+                        <a href="{{ route('pos.index', ['kassa' => '1']) }}" class="flex-1 text-center py-2 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-sm">
+                            Kassa 1
+                        </a>
+                        <a href="{{ route('pos.index', ['kassa' => '2']) }}" class="flex-1 text-center py-2 px-2.5 rounded-xl bg-slate-700 hover:bg-indigo-600 text-slate-200 hover:text-white font-bold text-xs transition-all shadow-sm border border-slate-600">
+                            Kassa 2
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Klantenscherm Module (2de scherm) -->
-                <a href="{{ route('pos.display') }}" target="_blank" class="group relative block p-4 sm:p-6 md:p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl md:rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-cyan-500/50 transition-all duration-300 hover:-translate-y-1 md:hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.3)]">
-                    <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div class="group relative block p-4 sm:p-6 md:p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl md:rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-[0_0_40px_-10px_rgba(6,182,212,0.3)] flex flex-col justify-between">
+                    <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
 
-                    <div class="relative flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-cyan-500/20 rounded-xl md:rounded-2xl mb-3 sm:mb-5 md:mb-6 mx-auto group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 border border-cyan-500/30 shadow-inner">
-                        <svg class="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-cyan-400 group-hover:text-cyan-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                        </svg>
+                    <div>
+                        <a href="{{ route('pos.display', ['kassa' => '1']) }}" target="_blank" class="block">
+                            <div class="relative flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-cyan-500/20 rounded-xl md:rounded-2xl mb-3 sm:mb-5 md:mb-6 mx-auto group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 border border-cyan-500/30 shadow-inner">
+                                <svg class="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-cyan-400 group-hover:text-cyan-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="relative text-base sm:text-lg md:text-2xl font-bold text-slate-100 mb-1 sm:mb-2 text-center group-hover:text-cyan-200 transition-colors">Klantenscherm</h3>
+                            <p class="relative text-slate-400 text-center text-xs sm:text-sm leading-relaxed group-hover:text-slate-300 transition-colors line-clamp-2 sm:line-clamp-none">2de scherm met live bestellingen en saldo.</p>
+                        </a>
                     </div>
-                    <h3 class="relative text-base sm:text-lg md:text-2xl font-bold text-slate-100 mb-1 sm:mb-2 text-center group-hover:text-cyan-200 transition-colors">Klantenscherm</h3>
-                    <p class="relative text-slate-400 text-center text-xs sm:text-sm leading-relaxed group-hover:text-slate-300 transition-colors line-clamp-2 sm:line-clamp-none">2de scherm met live bestellingen en saldo.</p>
-                </a>
+
+                    <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center justify-center gap-2 relative z-10">
+                        <a href="{{ route('pos.display', ['kassa' => '1']) }}" target="_blank" class="flex-1 text-center py-2 px-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition-all shadow-sm">
+                            Scherm 1 ↗
+                        </a>
+                        <a href="{{ route('pos.display', ['kassa' => '2']) }}" target="_blank" class="flex-1 text-center py-2 px-2.5 rounded-xl bg-slate-700 hover:bg-cyan-600 text-slate-200 hover:text-white font-bold text-xs transition-all shadow-sm border border-slate-600">
+                            Scherm 2 ↗
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Scanner Module -->
                 <a href="{{ route('scanner.index') }}" class="group relative block p-4 sm:p-6 md:p-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl md:rounded-3xl overflow-hidden hover:bg-slate-800/80 hover:border-emerald-500/50 transition-all duration-300 hover:-translate-y-1 md:hover:-translate-y-2 hover:shadow-[0_0_40px_-10px_rgba(16,185,129,0.3)]">
