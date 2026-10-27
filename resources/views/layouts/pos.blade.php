@@ -63,11 +63,6 @@
                        title="Schakel over naar Kassa 2">
                         Kassa 2
                     </a>
-                    <a href="{{ route('pos.index', ['kassa' => '3']) }}"
-                       class="px-2.5 py-1 rounded-lg text-xs font-black transition-all {{ $currentKassa === '3' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700' }}"
-                       title="Schakel over naar Kassa 3">
-                        Kassa 3
-                    </a>
                 </div>
 
                 <!-- Link to matching Customer Display -->
