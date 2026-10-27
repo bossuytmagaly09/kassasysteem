@@ -211,4 +211,139 @@ class BeheerApiServiceTest extends TestCase
         $this->assertSame('synced', $order->beheer_status);
         $this->assertSame(777, $order->beheer_sale_id);
     }
+
+    public function test_sync_snapshot_syncs_categories_from_items(): void
+    {
+        config(['beheer.api_token' => 'dummy-token']);
+
+        Http::fake([
+            '*/categories' => Http::response(['error' => 'not found'], 404),
+            '*/events/open' => Http::response([
+                'data' => [
+                    [
+                        'id' => 99,
+                        'name' => 'Zomerfuif',
+                        'event_date' => '2026-07-15',
+                        'punch_value' => 2.0,
+                        'items' => [
+                            [
+                                'id' => 101,
+                                'kind' => 'consumption',
+                                'name' => 'Jupiler',
+                                'price' => 2.0,
+                                'category' => 'Bieren',
+                            ],
+                            [
+                                'id' => 102,
+                                'kind' => 'consumption',
+                                'name' => 'Mojito',
+                                'price' => 6.0,
+                                'category' => [
+                                    'name' => 'Cocktails',
+                                    'slug' => 'cocktails',
+                                    'color' => '#10b981',
+                                ],
+                            ],
+                            [
+                                'id' => 103,
+                                'kind' => 'consumption',
+                                'name' => 'Chips Paprika',
+                                'price' => 1.5,
+                                'category_name' => 'Snacks',
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+            '*/people' => Http::response(['data' => []]),
+            '*/cards' => Http::response(['data' => []]),
+        ]);
+
+        $service = app(BeheerApiService::class);
+        $result = $service->syncSnapshot();
+
+        $this->assertTrue($result['success']);
+
+        // Assert categories are created
+        $bierenCat = Category::where('slug', 'bieren')->first();
+        $cocktailsCat = Category::where('slug', 'cocktails')->first();
+        $snacksCat = Category::where('slug', 'snacks')->first();
+
+        $this->assertNotNull($bierenCat);
+        $this->assertSame('Bieren', $bierenCat->name);
+
+        $this->assertNotNull($cocktailsCat);
+        $this->assertSame('Cocktails', $cocktailsCat->name);
+        $this->assertSame('#10b981', $cocktailsCat->color);
+
+        $this->assertNotNull($snacksCat);
+        $this->assertSame('Snacks', $snacksCat->name);
+
+        // Assert items are assigned to their respective categories
+        $jupiler = Product::where('external_id', 101)->first();
+        $mojito = Product::where('external_id', 102)->first();
+        $chips = Product::where('external_id', 103)->first();
+
+        $this->assertSame($bierenCat->id, $jupiler->category_id);
+        $this->assertSame($cocktailsCat->id, $mojito->category_id);
+        $this->assertSame($snacksCat->id, $chips->category_id);
+    }
+
+    public function test_sync_snapshot_syncs_categories_from_dedicated_endpoint(): void
+    {
+        config(['beheer.api_token' => 'dummy-token']);
+
+        Http::fake([
+            '*/categories' => Http::response([
+                'data' => [
+                    ['id' => 1, 'name' => 'Speciaalbieren', 'slug' => 'speciaalbieren'],
+                    ['id' => 2, 'name' => 'Sterke Dranken', 'slug' => 'sterke-dranken'],
+                ],
+            ]),
+            '*/events/open' => Http::response([
+                'data' => [
+                    [
+                        'id' => 88,
+                        'name' => 'Festival',
+                        'event_date' => '2026-08-20',
+                        'items' => [
+                            [
+                                'id' => 201,
+                                'kind' => 'consumption',
+                                'name' => 'Duvel 666',
+                                'price' => 4.0,
+                                'category_id' => 1,
+                            ],
+                            [
+                                'id' => 202,
+                                'kind' => 'consumption',
+                                'name' => 'Gin Tonic',
+                                'price' => 7.0,
+                                'category_id' => 2,
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+            '*/people' => Http::response(['data' => []]),
+            '*/cards' => Http::response(['data' => []]),
+        ]);
+
+        $service = app(BeheerApiService::class);
+        $result = $service->syncSnapshot();
+
+        $this->assertTrue($result['success']);
+
+        $speciaalCat = Category::where('slug', 'speciaalbieren')->first();
+        $sterkCat = Category::where('slug', 'sterke-dranken')->first();
+
+        $this->assertNotNull($speciaalCat);
+        $this->assertNotNull($sterkCat);
+
+        $duvel = Product::where('external_id', 201)->first();
+        $gin = Product::where('external_id', 202)->first();
+
+        $this->assertSame($speciaalCat->id, $duvel->category_id);
+        $this->assertSame($sterkCat->id, $gin->category_id);
+    }
 }

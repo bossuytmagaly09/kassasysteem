@@ -580,4 +580,27 @@ class TerminalTest extends TestCase
         $this->assertSame($this->cola->id, $drinkItem->product_id);
         $this->assertSame(3, $drinksOrder->vakjes);
     }
+
+    public function test_category_tabs_filter_products_properly(): void
+    {
+        $bierCat = Category::create(['name' => 'Bieren', 'slug' => 'bieren']);
+        $stella = Product::create([
+            'category_id' => $bierCat->id,
+            'name' => 'Stella',
+            'price' => 150,
+        ]);
+        $this->event->products()->attach($stella->id, ['price' => 150]);
+
+        Livewire::test(Terminal::class)
+            ->assertSee('Frisdrank')
+            ->assertSee('Bieren')
+            ->call('setCategory', $bierCat->id)
+            ->assertSet('activeCategoryId', $bierCat->id)
+            ->assertSee('Stella')
+            ->assertDontSee('Cola')
+            ->call('setCategory', $this->cola->category_id)
+            ->assertSet('activeCategoryId', $this->cola->category_id)
+            ->assertSee('Cola')
+            ->assertDontSee('Stella');
+    }
 }

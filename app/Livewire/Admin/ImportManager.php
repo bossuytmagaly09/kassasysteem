@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Card;
+use App\Models\Category;
 use App\Models\Order;
 use App\Models\Poef;
 use App\Models\Product;
@@ -21,6 +22,8 @@ class ImportManager extends Component
 
     public int $productCount = 0;
 
+    public int $categoryCount = 0;
+
     public int $peopleCount = 0;
 
     public int $cardsCount = 0;
@@ -35,6 +38,7 @@ class ImportManager extends Component
     public function refreshStats(): void
     {
         $this->productCount = Product::count();
+        $this->categoryCount = Category::count();
         $this->peopleCount = Poef::count();
         $this->cardsCount = Card::count();
         $this->pendingSalesCount = Order::where('beheer_status', 'pending')->whereNotNull('uuid')->count();

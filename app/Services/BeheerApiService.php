@@ -11,6 +11,7 @@ use App\Models\Product;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class BeheerApiService
 {
@@ -51,6 +52,16 @@ class BeheerApiService
     public function ping(): array
     {
         $response = $this->client()->get($this->baseUrl.'/ping');
+
+        return $this->handleResponse($response);
+    }
+
+    /**
+     * Fetch categories from Beheer if available.
+     */
+    public function fetchCategories(): array
+    {
+        $response = $this->client()->get($this->baseUrl.'/categories');
 
         return $this->handleResponse($response);
     }
@@ -149,15 +160,69 @@ class BeheerApiService
     public function syncSnapshot(): array
     {
         $logs = [];
+        $categoriesMap = [];
+        $syncedCategoriesCount = 0;
+
+        // 1. Probeer categorieën op te halen via specifiek Beheer-endpoint indien beschikbaar
+        try {
+            $categoriesData = $this->fetchCategories();
+            if (! empty($categoriesData['data']) && is_array($categoriesData['data'])) {
+                foreach ($categoriesData['data'] as $catData) {
+                    $cat = $this->syncCategoryRecord($catData);
+                    if ($cat) {
+                        $syncedCategoriesCount++;
+                        if (isset($catData['id'])) {
+                            $categoriesMap[(string) $catData['id']] = $cat;
+                        }
+                        if (isset($catData['slug'])) {
+                            $categoriesMap[$catData['slug']] = $cat;
+                        }
+                        $categoriesMap[strtolower($cat->name)] = $cat;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Optioneel endpoint op Beheer API; foutmelding mag snapshot niet blokkeren
+        }
+
         $eventsData = $this->fetchOpenEvents();
 
-        if (! empty($eventsData['data'])) {
-            $category = Category::firstOrCreate(
-                ['slug' => 'dranken'],
-                ['name' => 'Dranken', 'is_active' => true]
-            );
+        // 2. Categorieën op snapshot-niveau synchroniseren indien aanwezig
+        if (! empty($eventsData['categories']) && is_array($eventsData['categories'])) {
+            foreach ($eventsData['categories'] as $catData) {
+                $cat = $this->syncCategoryRecord($catData);
+                if ($cat) {
+                    $syncedCategoriesCount++;
+                    if (isset($catData['id'])) {
+                        $categoriesMap[(string) $catData['id']] = $cat;
+                    }
+                    if (isset($catData['slug'])) {
+                        $categoriesMap[$catData['slug']] = $cat;
+                    }
+                    $categoriesMap[strtolower($cat->name)] = $cat;
+                }
+            }
+        }
 
+        if (! empty($eventsData['data'])) {
             foreach ($eventsData['data'] as $eventInfo) {
+                // Event-specifieke categorieën synchroniseren indien aanwezig
+                if (! empty($eventInfo['categories']) && is_array($eventInfo['categories'])) {
+                    foreach ($eventInfo['categories'] as $catData) {
+                        $cat = $this->syncCategoryRecord($catData);
+                        if ($cat) {
+                            $syncedCategoriesCount++;
+                            if (isset($catData['id'])) {
+                                $categoriesMap[(string) $catData['id']] = $cat;
+                            }
+                            if (isset($catData['slug'])) {
+                                $categoriesMap[$catData['slug']] = $cat;
+                            }
+                            $categoriesMap[strtolower($cat->name)] = $cat;
+                        }
+                    }
+                }
+
                 $punchValue = isset($eventInfo['punch_value']) ? (float) $eventInfo['punch_value'] : null;
                 $vakPriceCents = $punchValue !== null ? (int) round($punchValue * 100) : 100;
 
@@ -185,6 +250,9 @@ class BeheerApiService
                             ]);
                         }
 
+                        $existingProduct = Product::where('external_id', $item['id'])->first();
+                        $category = $this->resolveItemCategory($item, $categoriesMap, $existingProduct);
+
                         $product = Product::updateOrCreate(
                             ['external_id' => $item['id']],
                             [
@@ -208,6 +276,10 @@ class BeheerApiService
                 }
 
                 $logs[] = "Event '{$event->name}' en ".count($eventProductPivots).' items gesynchroniseerd.';
+            }
+
+            if ($syncedCategoriesCount > 0) {
+                $logs[] = "{$syncedCategoriesCount} categorieën gesynchroniseerd vanuit beheer.";
             }
         } else {
             $logs[] = 'Geen open events gevonden op beheer.';
@@ -402,6 +474,152 @@ class BeheerApiService
                 'message' => 'Netwerkfout bij doorsturen naar beheer: '.$e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Create or update a Category model from category data.
+     */
+    public function syncCategoryRecord(array|string $catData): ?Category
+    {
+        if (is_string($catData)) {
+            $name = trim($catData);
+            if ($name === '') {
+                return null;
+            }
+            $slug = Str::slug($name);
+
+            return Category::firstOrCreate(
+                ['slug' => $slug],
+                ['name' => $name, 'is_active' => true]
+            );
+        }
+
+        $name = trim((string) ($catData['name'] ?? $catData['title'] ?? ''));
+        if ($name === '') {
+            return null;
+        }
+
+        $slug = (string) ($catData['slug'] ?? Str::slug($name));
+        $color = $catData['color'] ?? null;
+        $isActive = (bool) ($catData['is_active'] ?? true);
+
+        return Category::updateOrCreate(
+            ['slug' => $slug],
+            [
+                'name' => $name,
+                'color' => $color,
+                'is_active' => $isActive,
+            ]
+        );
+    }
+
+    /**
+     * Resolve the proper Category for an item synced from Beheer.
+     *
+     * @param  array<string, mixed>  $item
+     * @param  array<string, Category>  $categoriesMap
+     */
+    public function resolveItemCategory(array $item, array $categoriesMap = [], ?Product $existingProduct = null): Category
+    {
+        // 1. Array category definitie op het item
+        if (! empty($item['category']) && is_array($item['category'])) {
+            $cat = $this->syncCategoryRecord($item['category']);
+            if ($cat) {
+                return $cat;
+            }
+        }
+
+        // 2. Categorie naam als string in item['category']
+        if (! empty($item['category']) && is_string($item['category'])) {
+            $cat = $this->syncCategoryRecord($item['category']);
+            if ($cat) {
+                return $cat;
+            }
+        }
+
+        // 3. String in item['category_name'] of item['category_title']
+        $categoryName = $item['category_name'] ?? $item['category_title'] ?? null;
+        if (! empty($categoryName) && is_string($categoryName)) {
+            $cat = $this->syncCategoryRecord($categoryName);
+            if ($cat) {
+                return $cat;
+            }
+        }
+
+        // 4. Category ID of numerieke lookup
+        $categoryId = $item['category_id'] ?? (is_numeric($item['category'] ?? null) ? $item['category'] : null);
+        if ($categoryId !== null) {
+            $key = (string) $categoryId;
+            if (isset($categoriesMap[$key])) {
+                return $categoriesMap[$key];
+            }
+            $existingCat = Category::find($categoryId);
+            if ($existingCat) {
+                return $existingCat;
+            }
+        }
+
+        // 5. Category slug
+        if (! empty($item['category_slug'])) {
+            $slugKey = (string) $item['category_slug'];
+            if (isset($categoriesMap[$slugKey])) {
+                return $categoriesMap[$slugKey];
+            }
+            $existingCat = Category::where('slug', $slugKey)->first();
+            if ($existingCat) {
+                return $existingCat;
+            }
+        }
+
+        // 6. Behoud bestaande categorie van lokaal product indien aanwezig
+        if ($existingProduct && $existingProduct->category_id) {
+            $existingCat = Category::find($existingProduct->category_id);
+            if ($existingCat) {
+                return $existingCat;
+            }
+        }
+
+        // 7. Heuristische toewijzing o.b.v. productnaam en bestaande categorieën
+        $itemNameLower = strtolower($item['name'] ?? '');
+        $allCategories = Category::where('is_active', true)->get();
+
+        foreach ($allCategories as $cat) {
+            $catNameLower = strtolower($cat->name);
+            if ($catNameLower === $itemNameLower || str_contains($itemNameLower, $catNameLower)) {
+                return $cat;
+            }
+        }
+
+        if (preg_match('/(bier|jupiler|stella|duvel|carlsberg|omer|vedett|kriek|leffe|tripel|blonde|blond|pils)/i', $itemNameLower)) {
+            return $allCategories->firstWhere('slug', 'bieren')
+                ?? Category::firstOrCreate(['slug' => 'bieren'], ['name' => 'Bieren', 'is_active' => true]);
+        }
+
+        if (preg_match('/(fris|cola|fanta|sprite|ice[\s-]?tea|fuze|water|chaudfontaine|tonic|spa|red[\s-]?bull|hell|rodeo)/i', $itemNameLower)) {
+            return $allCategories->first(fn ($c) => in_array($c->slug, ['fris', 'frisdrank', 'frisdranken']))
+                ?? Category::firstOrCreate(['slug' => 'frisdrank'], ['name' => 'Frisdrank', 'is_active' => true]);
+        }
+
+        if (preg_match('/(monster)/i', $itemNameLower)) {
+            return $allCategories->firstWhere('slug', 'monster')
+                ?? Category::firstOrCreate(['slug' => 'monster'], ['name' => 'Monster', 'is_active' => true]);
+        }
+
+        if (preg_match('/(eten|chips|pizza|snack|nootjes|pasta|croque|burger|hotdog|noodles)/i', $itemNameLower)) {
+            return $allCategories->first(fn ($c) => in_array($c->slug, ['eten', 'snacks']))
+                ?? Category::firstOrCreate(['slug' => 'eten'], ['name' => 'Eten', 'is_active' => true]);
+        }
+
+        if (preg_match('/(cocktail|gin|rum|vodka|wodka|whisky|whiskey|shot|aperitief|wijn)/i', $itemNameLower)) {
+            return $allCategories->first(fn ($c) => in_array($c->slug, ['cocktails', 'sterke-dranken', 'wijn-en-bubbels']))
+                ?? Category::firstOrCreate(['slug' => 'cocktails'], ['name' => 'Cocktails', 'is_active' => true]);
+        }
+
+        // 8. Standaard fallback
+        return Category::firstOrCreate(
+            ['slug' => 'dranken'],
+            ['name' => 'Dranken', 'is_active' => true]
+        );
     }
 
     protected function client()

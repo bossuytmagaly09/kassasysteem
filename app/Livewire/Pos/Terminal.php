@@ -1108,6 +1108,25 @@ class Terminal extends Component
             return collect();
         }
 
+        // Auto-fix event producten zonder categorie
+        $orphanProducts = $event->products()
+            ->whereNull('products.category_id')
+            ->where(function ($query): void {
+                $query->whereNull('products.kind')
+                    ->orWhere('products.kind', '!=', 'punch_card');
+            })
+            ->get();
+
+        if ($orphanProducts->isNotEmpty()) {
+            $defaultCategory = Category::firstOrCreate(
+                ['slug' => 'dranken'],
+                ['name' => 'Dranken', 'is_active' => true]
+            );
+            foreach ($orphanProducts as $orphan) {
+                $orphan->update(['category_id' => $defaultCategory->id]);
+            }
+        }
+
         return Category::query()
             ->whereIn('id', $event->products()
                 ->where(function ($query): void {
@@ -1116,6 +1135,7 @@ class Terminal extends Component
                 })
                 ->pluck('products.category_id')
             )
+            ->orderBy('id')
             ->get();
     }
 
@@ -1150,6 +1170,7 @@ class Terminal extends Component
                     $query->whereNull('products.kind')
                         ->orWhere('products.kind', '!=', 'punch_card');
                 })
+                ->orderBy('products.sort')
                 ->orderBy('products.name')
                 ->get()
                 ->each(function ($product) use ($sold, $inCart): void {
