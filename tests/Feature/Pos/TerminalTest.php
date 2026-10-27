@@ -376,7 +376,7 @@ class TerminalTest extends TestCase
         ]);
     }
 
-    public function test_card_can_be_scanned_directly_without_clicking_start_payment(): void
+    public function test_card_cannot_pay_without_cashier_clicking_start_payment(): void
     {
         $poef = Poef::create([
             'external_id' => 888,
@@ -391,19 +391,16 @@ class TerminalTest extends TestCase
             'status' => 'active',
         ]);
 
+        // Scanning a card without cashier pressing Scanner (awaitingPayment = false)
+        // must NOT pay the order.
         Livewire::test(Terminal::class)
             ->call('addToOrder', $this->cola->id)
             ->call('handleScan', 'Card UID: 04 01 71 42 B9 12 91')
-            ->assertSet('paymentSuccess', true)
-            ->assertSet('scannedPoefName', 'Direct Scan Lid')
-            ->assertDispatched('nfc-beep', success: true);
+            ->assertSet('paymentSuccess', false)
+            ->assertSet('scannedPoefInfoName', 'Direct Scan Lid');
 
-        $this->assertDatabaseHas('orders', [
-            'event_id' => $this->event->id,
-            'poef_id' => $poef->id,
-            'card_id' => $card->id,
+        $this->assertDatabaseMissing('orders', [
             'card_uid' => '04017142B91291',
-            'payment_method' => 'scanner',
         ]);
     }
 
@@ -424,6 +421,7 @@ class TerminalTest extends TestCase
 
         Livewire::test(Terminal::class)
             ->call('addToOrder', $this->cola->id)
+            ->call('startPayment')
             ->call('handleScan', ['cardUid' => '04AABBCCDDEEFF', 'uid' => '04AABBCCDDEEFF'])
             ->assertSet('paymentSuccess', true)
             ->assertSet('scannedPoefName', 'Array Scan Lid')

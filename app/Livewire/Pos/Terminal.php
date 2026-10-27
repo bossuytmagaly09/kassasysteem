@@ -564,8 +564,8 @@ class Terminal extends Component
 
     /**
      * Process a scanned NFC card.
-     * When cart has items or awaiting payment: completes the sale and links poef.
-     * When idle / no items: performs a Saldo & Poef Check for the customer.
+     * Enkel als de kassa medewerker een betaalmethode heeft aangeklikt (awaitingPayment = true)
+     * kan er afgerekend worden. Anders mag een scan enkel een saldo/poef check uitvoeren.
      */
     #[On('card-scanned')]
     public function handleScan(mixed $cardUid = null): void
@@ -578,7 +578,8 @@ class Terminal extends Component
             return;
         }
 
-        if (! empty($this->orderItems) || $this->awaitingPayment) {
+        // Afrekenen met badge/kaart mag ENKEL als de kassa medewerker de betaalmethode (Scanner) heeft aangeklikt
+        if ($this->awaitingPayment) {
             $this->processPaymentScan($cardUid);
         } else {
             $this->processSaldoCheckScan($cardUid);

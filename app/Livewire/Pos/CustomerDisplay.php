@@ -48,6 +48,8 @@ class CustomerDisplay extends Component
 
     public ?string $poefInfoError = null;
 
+    public array $eventProducts = [];
+
     public float $stateTimestamp = 0.0;
 
     public function mount(): void
@@ -73,9 +75,12 @@ class CustomerDisplay extends Component
             $this->items = [];
             $this->total = 0;
             $this->vakjes = 0;
+            $this->loadEventProducts();
 
             return;
         }
+
+        $this->loadEventProducts();
 
         $now = microtime(true);
         $updatedAt = (float) ($cached['updated_at'] ?? $now);
@@ -121,6 +126,31 @@ class CustomerDisplay extends Component
         $this->poefTotalSpent = isset($cached['poef_total_spent']) ? (int) $cached['poef_total_spent'] : null;
         $this->poefInfoError = $cached['poef_info_error'] ?? null;
         $this->stateTimestamp = $updatedAt;
+    }
+
+    protected function loadEventProducts(): void
+    {
+        $event = Event::active();
+        if (! $event) {
+            $this->eventProducts = [];
+
+            return;
+        }
+
+        $this->eventProducts = $event->products()
+            ->with('category')
+            ->where('is_active', true)
+            ->where('kind', '!=', 'punch_card')
+            ->orderBy('category_id')
+            ->orderBy('sort')
+            ->get()
+            ->map(fn ($p): array => [
+                'id' => $p->id,
+                'name' => preg_replace('/\s*\(.*?\)/', '', $p->name),
+                'price' => (int) $p->pivot->price,
+                'category' => $p->category?->name ?? 'Dranken',
+            ])
+            ->toArray();
     }
 
     public function render()

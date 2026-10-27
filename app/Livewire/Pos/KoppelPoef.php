@@ -126,6 +126,26 @@ class KoppelPoef extends Component
 
         $cardHash = BeheerApiService::hashCardUid($cleanUid);
 
+        // Security check: kaart mag NIET overschreven worden als deze al aan een ander lid gekoppeld is!
+        $existingCard = Card::with('poef')
+            ->where(function ($q) use ($cleanUid, $cardHash): void {
+                $q->where('uid', $cleanUid);
+                if ($cardHash) {
+                    $q->orWhere('card_hash', $cardHash);
+                }
+            })
+            ->where('status', 'active')
+            ->whereNotNull('poef_id')
+            ->first();
+
+        if ($existingCard && $existingCard->poef_id !== $poef->id) {
+            $ownerName = $existingCard->poef?->poef_name ?: $existingCard->poef?->name ?: 'een ander lid';
+            $this->errorMessage = "Beveiliging: Deze {$this->cardTypeLabel($existingCard->card_type ?? $this->cardType)} ({$cleanUid}) is reeds gekoppeld aan {$ownerName}. Overschrijven naar een ander lid is niet toegestaan! Verwijder de kaart eerst in het overzicht alvorens opnieuw toe te wijzen.";
+            $this->dispatch('nfc-beep', success: false);
+
+            return;
+        }
+
         // Link card in local database
         $card = Card::updateOrCreate(
             ['uid' => $cleanUid],
@@ -182,7 +202,7 @@ class KoppelPoef extends Component
     }
 
     /**
-     * Push all local card links to drankdb and pull any new cards/users.
+     * Push all local card links to Beheer / drankdb and pull any new cards/users.
      */
     public function pushAndSync(): void
     {
@@ -191,57 +211,106 @@ class KoppelPoef extends Component
         $this->message = null;
 
         try {
-            $this->ensureExternalCardsTable();
-            $this->syncUsersFromExternal();
-
             $pushed = 0;
+            $apiSuccess = false;
+            $dbSuccess = false;
             $activeCards = Card::with('poef')->whereNotNull('poef_id')->get();
 
-            foreach ($activeCards as $card) {
-                if ($card->poef?->external_id) {
-                    DB::connection('external')->table('cards')->updateOrInsert(
-                        ['uid' => $card->uid],
-                        [
-                            'user_id' => $card->poef->external_id,
-                            'card_type' => $card->card_type,
-                            'label' => $card->label,
-                            'updated_at' => now(),
-                        ]
-                    );
-                    $pushed++;
+            // 1. Synchronisatie via officiële Beheer REST API (indien token ingesteld)
+            if (! empty(config('beheer.api_token'))) {
+                try {
+                    $api = app(BeheerApiService::class);
+                    foreach ($activeCards as $card) {
+                        $hash = $card->card_hash ?: BeheerApiService::hashCardUid($card->uid);
+                        $hangaarId = (int) ($card->hangaar_user_id ?? $card->poef?->hangaar_user_id ?? $card->poef?->external_id);
+                        if ($hash && $hangaarId) {
+                            $api->linkCard($hash, $hangaarId, replace: true);
+                            $pushed++;
+                        }
+                    }
+                    $api->syncSnapshot();
+                    $apiSuccess = true;
+                } catch (\Throwable $apiErr) {
+                    // API sync failure logged without blocking
                 }
             }
 
-            // Pull any external cards back into local kassa cards
-            $pulled = 0;
-            $externalCards = DB::connection('external')->table('cards')->get();
-            foreach ($externalCards as $extCard) {
-                $poef = Poef::where('external_id', $extCard->user_id)->first();
-                if ($poef) {
-                    Card::updateOrCreate(
-                        ['uid' => $extCard->uid],
-                        [
-                            'poef_id' => $poef->id,
-                            'card_type' => $extCard->card_type ?? 'badge',
-                            'label' => $extCard->label,
-                            'status' => 'active',
-                        ]
-                    );
-                    $pulled++;
+            // 2. Directe synchronisatie met externe drankdb (enkel indien verbinding beschikbaar is)
+            if ($this->isExternalDbAvailable()) {
+                $this->ensureExternalCardsTable();
+                $this->syncUsersFromExternal();
+
+                foreach ($activeCards as $card) {
+                    if ($card->poef?->external_id) {
+                        DB::connection('external')->table('cards')->updateOrInsert(
+                            ['uid' => $card->uid],
+                            [
+                                'user_id' => $card->poef->external_id,
+                                'card_type' => $card->card_type,
+                                'label' => $card->label,
+                                'updated_at' => now(),
+                            ]
+                        );
+                        if (! $apiSuccess) {
+                            $pushed++;
+                        }
+                    }
                 }
+
+                // Pull any external cards back into local kassa cards
+                $externalCards = DB::connection('external')->table('cards')->get();
+                foreach ($externalCards as $extCard) {
+                    $poef = Poef::where('external_id', $extCard->user_id)->first();
+                    if ($poef) {
+                        Card::updateOrCreate(
+                            ['uid' => $extCard->uid],
+                            [
+                                'poef_id' => $poef->id,
+                                'card_type' => $extCard->card_type ?? 'badge',
+                                'label' => $extCard->label,
+                                'status' => 'active',
+                            ]
+                        );
+                    }
+                }
+                $dbSuccess = true;
             }
 
-            $this->message = "Gesynchroniseerd met beheerwebsite! {$pushed} kaarten gepusht naar drank website.";
+            if ($apiSuccess && $dbSuccess) {
+                $this->message = "Gesynchroniseerd met Beheer API & database! {$pushed} actieve kaarten bijgewerkt.";
+            } elseif ($apiSuccess) {
+                $this->message = "Gesynchroniseerd met Beheer API! {$pushed} actieve kaarten succesvol doorgestuurd.";
+            } elseif ($dbSuccess) {
+                $this->message = "Gesynchroniseerd met beheerdatabase! {$pushed} kaarten gepusht naar drank website.";
+            } else {
+                $totalLocal = $activeCards->count();
+                $this->message = "{$totalLocal} koppelingen zijn lokaal actief opgeslagen. Tip: vul in .env de DB_EXTERNAL_PASSWORD of BEHEER_API_TOKEN in om online te synchroniseren.";
+            }
         } catch (\Throwable $e) {
-            $this->errorMessage = 'Synchronisatie mislukt: '.$e->getMessage();
+            $this->errorMessage = 'Synchronisatie fout: '.$e->getMessage();
         } finally {
             $this->isSyncing = false;
+        }
+    }
+
+    private function isExternalDbAvailable(): bool
+    {
+        try {
+            DB::connection('external')->getPdo();
+
+            return true;
+        } catch (\Throwable) {
+            return false;
         }
     }
 
     private function syncUsersFromExternal(): void
     {
         try {
+            if (! $this->isExternalDbAvailable()) {
+                return;
+            }
+
             if (! Schema::connection('external')->hasTable('users')) {
                 return;
             }
@@ -268,6 +337,10 @@ class KoppelPoef extends Component
     private function ensureExternalCardsTable(): void
     {
         try {
+            if (! $this->isExternalDbAvailable()) {
+                return;
+            }
+
             DB::connection('external')->statement('
                 CREATE TABLE IF NOT EXISTS cards (
                     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -288,6 +361,10 @@ class KoppelPoef extends Component
     private function pushSingleCardToExternal(Card $card, Poef $poef): void
     {
         try {
+            if (! $this->isExternalDbAvailable()) {
+                return;
+            }
+
             $this->ensureExternalCardsTable();
 
             if ($poef->external_id) {
@@ -309,6 +386,10 @@ class KoppelPoef extends Component
     private function removeCardFromExternal(string $uid): void
     {
         try {
+            if (! $this->isExternalDbAvailable()) {
+                return;
+            }
+
             if (Schema::connection('external')->hasTable('cards')) {
                 DB::connection('external')->table('cards')->where('uid', $uid)->delete();
             }

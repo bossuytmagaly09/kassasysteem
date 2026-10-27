@@ -52,7 +52,7 @@ class KoppelPoefTest extends TestCase
         Livewire::test(KoppelPoef::class)
             ->dispatch('open-koppel-poef')
             ->call('selectPoef', $this->poef1->id)
-            ->set('cardUid', 'UID-ABC-123')
+            ->set('cardUid', '04A1B2C3D4')
             ->set('cardType', 'badge')
             ->set('label', 'Blauwe sleutelhanger')
             ->call('linkCard')
@@ -61,7 +61,7 @@ class KoppelPoefTest extends TestCase
 
         $this->assertDatabaseHas('cards', [
             'poef_id' => $this->poef1->id,
-            'uid' => 'UID-ABC-123',
+            'uid' => '04A1B2C3D4',
             'card_type' => 'badge',
             'label' => 'Blauwe sleutelhanger',
             'status' => 'active',
@@ -111,6 +111,39 @@ class KoppelPoefTest extends TestCase
 
         $this->assertDatabaseHas('cards', ['poef_id' => $this->poef1->id, 'uid' => 'BADGE-1']);
         $this->assertDatabaseHas('cards', ['poef_id' => $this->poef1->id, 'uid' => 'BANKKAART-1']);
+    }
+
+    public function test_card_already_linked_to_another_poef_cannot_be_overwritten(): void
+    {
+        // First link card to poef1
+        Card::create([
+            'poef_id' => $this->poef1->id,
+            'uid' => 'SECURE-BADGE-007',
+            'card_type' => 'badge',
+            'status' => 'active',
+        ]);
+
+        // Attempt to link same card to poef2
+        Livewire::test(KoppelPoef::class)
+            ->dispatch('open-koppel-poef')
+            ->call('selectPoef', $this->poef2->id)
+            ->set('cardUid', 'SECURE-BADGE-007')
+            ->set('cardType', 'nfc')
+            ->call('linkCard')
+            ->assertSee('Beveiliging: Deze')
+            ->assertSee('Charlotte Van Houtte')
+            ->assertSee('Overschrijven naar een ander lid is niet toegestaan')
+            ->assertDispatched('nfc-beep', success: false);
+
+        // Verify it was NOT overwritten in database
+        $this->assertDatabaseHas('cards', [
+            'uid' => 'SECURE-BADGE-007',
+            'poef_id' => $this->poef1->id,
+        ]);
+        $this->assertDatabaseMissing('cards', [
+            'uid' => 'SECURE-BADGE-007',
+            'poef_id' => $this->poef2->id,
+        ]);
     }
 
     public function test_card_can_be_unlinked(): void
