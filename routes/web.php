@@ -29,31 +29,19 @@ use App\Livewire\Admin\CategoryManager;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\EventManager;
 use App\Livewire\Admin\ImportManager;
-use App\Livewire\Admin\PinLogin;
 use App\Livewire\Admin\ProductManager;
 use App\Livewire\Admin\SalesLog;
 
-// Admin PIN Login
-Route::get('/admin/pin', PinLogin::class)->name('admin.pin');
-Route::get('/admin/lock', function () {
-    session()->forget('admin_pin_authenticated');
+Route::get('/scanner', CardManager::class)->name('scanner.index');
 
-    return redirect()->route('admin.pin');
-})->name('admin.lock');
-
-// Beheer & Kaarten - Beveiligd met admin PIN
-Route::middleware(['admin.pin'])->group(function () {
-    Route::get('/scanner', CardManager::class)->name('scanner.index');
-
-    Route::prefix('admin')->group(function () {
-        Route::get('/', Dashboard::class)->name('admin.dashboard');
-        Route::get('/verkopen', SalesLog::class)->name('admin.sales');
-        Route::get('/verkoop-log', SalesLog::class)->name('admin.sales-log');
-        Route::get('/producten', ProductManager::class)->name('admin.products');
-        Route::get('/categorieen', CategoryManager::class)->name('admin.categories');
-        Route::get('/events', EventManager::class)->name('admin.events');
-        Route::get('/import', ImportManager::class)->name('admin.import');
-    });
+Route::prefix('admin')->group(function () {
+    Route::get('/', Dashboard::class)->name('admin.dashboard');
+    Route::get('/verkopen', SalesLog::class)->name('admin.sales');
+    Route::get('/verkoop-log', SalesLog::class)->name('admin.sales-log');
+    Route::get('/producten', ProductManager::class)->name('admin.products');
+    Route::get('/categorieen', CategoryManager::class)->name('admin.categories');
+    Route::get('/events', EventManager::class)->name('admin.events');
+    Route::get('/import', ImportManager::class)->name('admin.import');
 });
 
 require __DIR__.'/auth.php';

@@ -147,15 +147,16 @@ class MultiKassaAndCashierSessionTest extends TestCase
             ->assertSet('total', 500);
     }
 
-    public function test_admin_pin_middleware_protects_admin_routes(): void
+    public function test_admin_and_scanner_and_display_routes_are_directly_accessible(): void
     {
-        config(['kassa.enforce_pin_in_tests' => true]);
-
-        // Unauthenticated access redirects to /admin/pin
-        $this->get(route('admin.sales'))->assertRedirect(route('admin.pin'));
-        $this->get('/scanner')->assertRedirect(route('admin.pin'));
-
-        // Customer display is NOT protected (per user requirement)
+        // Admin, scanner and customer display routes are directly accessible
+        $this->get('/scanner')->assertOk();
+        $this->get(route('admin.dashboard'))->assertOk();
+        $this->get(route('admin.sales'))->assertOk();
+        $this->get(route('admin.products'))->assertOk();
+        $this->get(route('admin.categories'))->assertOk();
+        $this->get(route('admin.events'))->assertOk();
+        $this->get(route('admin.import'))->assertOk();
         $this->get('/klantenscherm')->assertOk();
         $this->get('/display/2')->assertOk();
     }
