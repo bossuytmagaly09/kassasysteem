@@ -48,6 +48,7 @@ Route::middleware(['admin.pin'])->group(function () {
     Route::prefix('admin')->group(function () {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
         Route::get('/verkopen', SalesLog::class)->name('admin.sales');
+        Route::get('/verkoop-log', SalesLog::class)->name('admin.sales-log');
         Route::get('/producten', ProductManager::class)->name('admin.products');
         Route::get('/categorieen', CategoryManager::class)->name('admin.categories');
         Route::get('/events', EventManager::class)->name('admin.events');

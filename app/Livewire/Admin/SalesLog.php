@@ -6,7 +6,9 @@ use App\Models\CashierSession;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\EventSettlementService;
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -14,17 +16,35 @@ class SalesLog extends Component
 {
     use WithPagination;
 
+    #[Url]
     public ?int $selectedEventId = null;
 
     public string $paymentMethodFilter = '';
 
     public string $search = '';
 
+    #[Url]
     public string $activeTab = 'items';
 
-    public function mount(?int $eventId = null): void
+    public ?string $syncMessage = null;
+
+    public ?string $syncError = null;
+
+    public bool $isSyncing = false;
+
+    public function mount(?int $eventId = null, ?string $tab = null): void
     {
-        $this->selectedEventId = $eventId ?? Event::active()?->id ?? Event::query()->latest()->value('id');
+        if ($tab) {
+            $this->activeTab = $tab;
+        } elseif (request()->routeIs('admin.sales-log')) {
+            $this->activeTab = 'orders';
+        }
+
+        if ($eventId !== null) {
+            $this->selectedEventId = $eventId;
+        } elseif ($this->selectedEventId === null) {
+            $this->selectedEventId = Event::active()?->id ?? Event::query()->latest()->value('id');
+        }
     }
 
     public function updatingSearch(): void
@@ -45,6 +65,39 @@ class SalesLog extends Component
     public function setTab(string $tab): void
     {
         $this->activeTab = $tab;
+    }
+
+    public function pushPendingToBeheer(): void
+    {
+        $this->isSyncing = true;
+        $this->syncMessage = null;
+        $this->syncError = null;
+
+        try {
+            $event = $this->selectedEventId ? Event::find($this->selectedEventId) : null;
+            $res = app(EventSettlementService::class)->pushSalesToBeheer($event);
+            $this->syncMessage = "Succesvol doorgestuurd naar beheer! {$res['message']}";
+        } catch (\Throwable $e) {
+            $this->syncError = 'Fout bij pushen naar beheer: '.$e->getMessage();
+        } finally {
+            $this->isSyncing = false;
+        }
+    }
+
+    public function closeEvent(int $eventId): void
+    {
+        $event = Event::findOrFail($eventId);
+        $res = app(EventSettlementService::class)->closeAndSettle($event);
+        $this->syncMessage = $res['message'];
+        $this->selectedEventId = $event->id;
+    }
+
+    public function reopenEvent(int $eventId): void
+    {
+        $event = Event::findOrFail($eventId);
+        app(EventSettlementService::class)->reopen($event);
+        $this->syncMessage = "Event '{$event->name}' is heropend.";
+        $this->selectedEventId = $event->id;
     }
 
     public function render(): View
@@ -119,8 +172,12 @@ class SalesLog extends Component
             ->latest()
             ->paginate(25);
 
+        $pendingBeheerCount = (int) (clone $ordersBase)->where('beheer_status', 'pending')->count();
+        $unsettledPoefTotal = (int) (clone $ordersBase)->whereNotNull('poef_id')->whereNull('settled_at')->sum('total_amount');
+        $unsettledPoefCount = (int) (clone $ordersBase)->whereNotNull('poef_id')->whereNull('settled_at')->count();
+
         $cashierSessions = CashierSession::query()
-            ->latest('login_at')
+            ->latest('logged_in_at')
             ->take(100)
             ->get();
 
@@ -142,6 +199,9 @@ class SalesLog extends Component
             'productSales' => $productSales,
             'orders' => $orders,
             'cashierSessions' => $cashierSessions,
+            'pendingBeheerCount' => $pendingBeheerCount,
+            'unsettledPoefTotal' => $unsettledPoefTotal,
+            'unsettledPoefCount' => $unsettledPoefCount,
         ])->layout('layouts.admin');
     }
 }

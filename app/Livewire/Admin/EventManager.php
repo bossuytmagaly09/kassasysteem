@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Event;
 use App\Models\Product;
 use App\PaymentMode;
+use App\Services\EventSettlementService;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -224,6 +225,22 @@ class EventManager extends Component
     public function deactivateEvent(int $eventId): void
     {
         Event::whereKey($eventId)->update(['is_active' => false]);
+    }
+
+    public function closeEvent(int $eventId): void
+    {
+        $event = Event::findOrFail($eventId);
+        $result = app(EventSettlementService::class)->closeAndSettle($event);
+        session()->flash('event_status_message', $result['message']);
+        $this->selectedEventId = $event->id;
+    }
+
+    public function reopenEvent(int $eventId): void
+    {
+        $event = Event::findOrFail($eventId);
+        app(EventSettlementService::class)->reopen($event);
+        session()->flash('event_status_message', "Event '{$event->name}' is heropend en opnieuw actief.");
+        $this->selectedEventId = $event->id;
     }
 
     public function deleteEvent(int $eventId): void

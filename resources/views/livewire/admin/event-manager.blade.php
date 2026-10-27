@@ -28,6 +28,10 @@
                                 <span class="shrink-0 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> KASSA
                                 </span>
+                            @elseif($event->is_closed)
+                                <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                    🔒 AFGESLOTEN
+                                </span>
                             @endif
                         </div>
                         <div class="text-xs text-slate-400 mt-1 flex items-center gap-2">
@@ -51,6 +55,13 @@
 
         <!-- Right: Event detail & Products -->
         <section>
+            @if(session('event_status_message'))
+                <div class="mb-6 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-semibold text-sm flex items-center gap-3 shadow-lg">
+                    <svg class="w-5 h-5 shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <span>{{ session('event_status_message') }}</span>
+                </div>
+            @endif
+
             @if($selectedEvent)
                 <!-- Event Header Card -->
                 <div class="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 shadow-xl mb-6">
@@ -58,33 +69,57 @@
                         <div>
                             <div class="flex items-center gap-3">
                                 <h2 class="text-3xl font-black text-slate-100 tracking-tight">{{ $selectedEvent->name }}</h2>
-                                @if($selectedEvent->is_active)
+                                @if($selectedEvent->is_closed)
+                                    <span class="px-3 py-1 rounded-full text-xs font-black bg-rose-500/20 text-rose-300 border border-rose-500/50 flex items-center gap-1.5 uppercase tracking-wider">
+                                        🔒 Afgesloten
+                                    </span>
+                                @elseif($selectedEvent->is_active)
                                     <span class="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 flex items-center gap-1.5 uppercase tracking-wider">
                                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Nu actief op kassa
                                     </span>
                                 @else
                                     <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-700/50 text-slate-400 border border-slate-600/50 uppercase tracking-wider">
-                                        Inactief
+                                        Inactief / Open
                                     </span>
                                 @endif
                             </div>
                             <p class="text-slate-400 text-sm mt-1">
                                 {{ $selectedEvent->date?->translatedFormat('l j F Y') ?? 'Geen datum ingesteld' }}
+                                @if($selectedEvent->is_closed && $selectedEvent->closed_at)
+                                    • <span class="text-rose-400 font-semibold">Gesloten op {{ $selectedEvent->closed_at->format('d/m/Y H:i') }}</span>
+                                @endif
                             </p>
                         </div>
 
                         <!-- Action buttons -->
                         <div class="flex flex-wrap items-center gap-2">
-                            @if($selectedEvent->is_active)
-                                <button type="button" wire:click="deactivateEvent({{ $selectedEvent->id }})"
-                                    class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700/60 font-semibold text-sm transition-all">
-                                    Deactiveren
+                            @if(! $selectedEvent->is_closed)
+                                @if($selectedEvent->is_active)
+                                    <button type="button" wire:click="deactivateEvent({{ $selectedEvent->id }})"
+                                        class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700/60 font-semibold text-sm transition-all">
+                                        Deactiveren
+                                    </button>
+                                @else
+                                    <button type="button" wire:click="activateEvent({{ $selectedEvent->id }})"
+                                        class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-1.5">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                        Activeren op Kassa
+                                    </button>
+                                @endif
+
+                                <button type="button"
+                                    wire:click="closeEvent({{ $selectedEvent->id }})"
+                                    wire:confirm="Weet je zeker dat je event '{{ $selectedEvent->name }}' wilt afsluiten? Alle openstaande poefbedragen van de leden worden hierbij definitief doorgestuurd en bijgeschreven op hun poef in de beheerdatabase."
+                                    class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-bold text-sm transition-all shadow-lg shadow-rose-600/25 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    Event Afsluiten & Poefs
                                 </button>
                             @else
-                                <button type="button" wire:click="activateEvent({{ $selectedEvent->id }})"
-                                    class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-1.5">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                    Activeren op Kassa
+                                <button type="button"
+                                    wire:click="reopenEvent({{ $selectedEvent->id }})"
+                                    class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-sm transition-all border border-slate-600 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                    Heropen Event
                                 </button>
                             @endif
 

@@ -1,6 +1,26 @@
 <div>
     @section('title', 'Verkopen & Bestellingen Log')
 
+    @if($syncMessage)
+        <div class="mb-6 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-semibold text-sm flex items-center justify-between gap-3 shadow-lg">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span>{{ $syncMessage }}</span>
+            </div>
+            <button type="button" wire:click="$set('syncMessage', null)" class="text-slate-400 hover:text-white text-lg">&times;</button>
+        </div>
+    @endif
+
+    @if($syncError)
+        <div class="mb-6 p-4 rounded-2xl bg-red-500/15 border border-red-500/40 text-red-300 font-semibold text-sm flex items-center justify-between gap-3 shadow-lg">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>{{ $syncError }}</span>
+            </div>
+            <button type="button" wire:click="$set('syncError', null)" class="text-slate-400 hover:text-white text-lg">&times;</button>
+        </div>
+    @endif
+
     <!-- Top Filter Bar -->
     <div class="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 shadow-xl mb-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
@@ -25,7 +45,7 @@
                         <option value="">Alle Events (Totaal)</option>
                         @foreach($events as $event)
                             <option value="{{ $event->id }}">
-                                {{ $event->name }} {{ $event->is_active ? '★ (Actief)' : '' }}
+                                {{ $event->name }} {{ $event->is_active ? '★ (Actief)' : ($event->is_closed ? '🔒 (Afgesloten)' : '○ (Open)') }}
                             </option>
                         @endforeach
                     </select>
@@ -55,6 +75,84 @@
                 </div>
             </div>
         </div>
+
+        @if($selectedEvent)
+            <!-- Event Status & Actions Bar -->
+            <div class="mt-4 pt-4 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-sm text-slate-300 font-bold">Event: <span class="text-white font-black">{{ $selectedEvent->name }}</span></span>
+                    @if($selectedEvent->is_closed)
+                        <span class="px-3 py-1 rounded-full text-xs font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1.5">
+                            🔒 Afgesloten op {{ $selectedEvent->closed_at?->format('d/m/Y H:i') ?? 'ongekend' }}
+                        </span>
+                        @if($selectedEvent->poef_settled)
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                                ✓ Poefs Verwerkt in Beheer
+                            </span>
+                        @endif
+                    @elseif($selectedEvent->is_active)
+                        <span class="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Nu Actief op Kassa
+                        </span>
+                    @else
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-300 border border-slate-600">
+                            Inactief / Open
+                        </span>
+                    @endif
+
+                    @if($unsettledPoefCount > 0)
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            Openstaande Poefs: € {{ number_format($unsettledPoefTotal / 100, 2, ',', '.') }} ({{ $unsettledPoefCount }}x)
+                        </span>
+                    @endif
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- Push to Beheer button -->
+                    <button type="button"
+                            wire:click="pushPendingToBeheer"
+                            wire:loading.attr="disabled"
+                            class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all">
+                        <svg class="w-4 h-4 text-emerald-200" wire:loading.class="animate-spin" wire:target="pushPendingToBeheer" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        <span>Pushen naar Beheerssite</span>
+                        @if($pendingBeheerCount > 0)
+                            <span class="px-2 py-0.5 text-[10px] bg-emerald-900 text-emerald-200 rounded-full font-black border border-emerald-400/40">{{ $pendingBeheerCount }}</span>
+                        @endif
+                    </button>
+
+                    @if(! $selectedEvent->is_closed)
+                        <button type="button"
+                                wire:click="closeEvent({{ $selectedEvent->id }})"
+                                wire:confirm="Weet je zeker dat je event '{{ $selectedEvent->name }}' wilt afsluiten? Alle openstaande poefbedragen van de leden worden hierbij definitief doorgestuurd en bijgeschreven op hun poef in de beheerdatabase."
+                                class="px-4 py-2 bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                            <span>Event Afsluiten & Poefs</span>
+                        </button>
+                    @else
+                        <button type="button"
+                                wire:click="reopenEvent({{ $selectedEvent->id }})"
+                                class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600 font-bold text-xs rounded-xl transition-all">
+                            Heropen Event
+                        </button>
+                    @endif
+                </div>
+            </div>
+        @else
+            <!-- Global Action Bar (When All Events selected) -->
+            <div class="mt-4 pt-4 border-t border-slate-700/60 flex items-center justify-between">
+                <span class="text-sm text-slate-400">Weergave over alle evenementen samen</span>
+                <button type="button"
+                        wire:click="pushPendingToBeheer"
+                        wire:loading.attr="disabled"
+                        class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all">
+                    <svg class="w-4 h-4 text-emerald-200" wire:loading.class="animate-spin" wire:target="pushPendingToBeheer" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <span>Pushen naar Beheerssite</span>
+                    @if($pendingBeheerCount > 0)
+                        <span class="px-2 py-0.5 text-[10px] bg-emerald-900 text-emerald-200 rounded-full font-black border border-emerald-400/40">{{ $pendingBeheerCount }}</span>
+                    @endif
+                </button>
+            </div>
+        @endif
 
         <!-- KPI Summary Cards -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
@@ -207,10 +305,23 @@
     <!-- TAB 2: Orders Chronological Log -->
     @if($activeTab === 'orders')
         <div class="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-xl overflow-hidden">
-            <div class="p-6 border-b border-slate-700/50 flex items-center justify-between">
+            <div class="p-6 border-b border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h3 class="text-xl font-bold text-slate-100">Gedetailleerde Bestellingen Log</h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Elke bestelling op datum, tijd, betaalwijze, gekoppelde poef en inhoud.</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Elke bestelling op datum, tijd, kassa, kassier, betaalwijze, gekoppelde poef en inhoud.</p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button type="button"
+                            wire:click="pushPendingToBeheer"
+                            wire:loading.attr="disabled"
+                            class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all">
+                        <svg class="w-4 h-4 text-emerald-200" wire:loading.class="animate-spin" wire:target="pushPendingToBeheer" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        <span>Pushen naar Beheerssite</span>
+                        @if($pendingBeheerCount > 0)
+                            <span class="px-2 py-0.5 text-[10px] bg-emerald-900 text-emerald-200 rounded-full font-black border border-emerald-400/40">{{ $pendingBeheerCount }}</span>
+                        @endif
+                    </button>
                 </div>
             </div>
 
@@ -226,6 +337,7 @@
                             <th class="px-6 py-4">Inhoud Bestelling</th>
                             <th class="px-6 py-4 text-right">Vakjes</th>
                             <th class="px-6 py-4 text-right">Totaalbedrag</th>
+                            <th class="px-6 py-4 text-center">Beheer Status</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-700/40">
@@ -238,7 +350,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-xs">
                                     <div class="font-bold text-slate-200 flex items-center gap-1.5">
                                         <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-                                        {{ ucfirst($order->device ?: 'Kassa 1') }}
+                                        {{ ucwords(str_replace('-', ' ', $order->device ?: 'kassa 1')) }}
                                     </div>
                                     <div class="text-slate-400 font-medium">{{ $order->cashier_name ?: 'Onbekend' }}</div>
                                 </td>
@@ -300,10 +412,29 @@
                                 <td class="px-6 py-4 text-right font-black text-base text-emerald-400 whitespace-nowrap">
                                     € {{ number_format($order->total_amount / 100, 2, ',', '.') }}
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-xs">
+                                    @if($order->settled_at)
+                                        <span class="px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold" title="Afgesloten en poef verwerkt op {{ $order->settled_at }}">
+                                            ✓ Poef Verwerkt
+                                        </span>
+                                    @elseif($order->beheer_status === 'synced')
+                                        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                                            ✓ Gesynchroniseerd
+                                        </span>
+                                    @elseif($order->beheer_status === 'duplicate')
+                                        <span class="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-300 border border-slate-600 font-semibold">
+                                            Reeds Verwerkt
+                                        </span>
+                                    @else
+                                        <span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold">
+                                            Wachtrij
+                                        </span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-12 text-center text-slate-500">
+                                <td colspan="9" class="px-6 py-12 text-center text-slate-500">
                                     Geen bestellingen gevonden voor de geselecteerde filters.
                                 </td>
                             </tr>

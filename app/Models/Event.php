@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\PaymentMode;
+use App\Services\EventSettlementService;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,10 @@ class Event extends Model
         'card_price',
         'punch_value',
         'is_active',
+        'is_closed',
+        'closed_at',
+        'poef_settled',
+        'poef_settled_at',
     ];
 
     protected function casts(): array
@@ -36,20 +41,29 @@ class Event extends Model
             'card_price' => 'integer',
             'punch_value' => 'decimal:2',
             'is_active' => 'boolean',
+            'is_closed' => 'boolean',
+            'closed_at' => 'datetime',
+            'poef_settled' => 'boolean',
+            'poef_settled_at' => 'datetime',
         ];
     }
 
     public static function active(): ?self
     {
-        return static::query()->where('is_active', true)->first();
+        return static::query()->where('is_active', true)->where('is_closed', false)->first();
     }
 
     public function activate(): void
     {
         DB::transaction(function (): void {
             static::query()->whereKeyNot($this->id)->update(['is_active' => false]);
-            $this->update(['is_active' => true]);
+            $this->update(['is_active' => true, 'is_closed' => false]);
         });
+    }
+
+    public function close(): array
+    {
+        return app(EventSettlementService::class)->closeAndSettle($this);
     }
 
     public function products(): BelongsToMany
