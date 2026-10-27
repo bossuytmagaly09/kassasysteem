@@ -23,9 +23,9 @@
 
     <!-- Top Header Bar (Logo, Event name, clock & vakwaarde pills) -->
     <header class="flex items-center justify-between pb-3.5 border-b border-slate-800/80 gap-3 shrink-0">
-        <div class="flex items-center gap-3.5 min-w-0">
+        <div class="flex items-center gap-3 min-w-0">
             <!-- Professioneel, modern kassa logo icoon -->
-            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-3 shadow-lg shadow-indigo-500/25 border border-indigo-400/40 flex items-center justify-center shrink-0 text-white overflow-hidden">
+            <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-2.5 shadow-lg shadow-indigo-500/25 border border-indigo-400/40 flex items-center justify-center shrink-0 text-white overflow-hidden">
                 <svg class="w-full h-full drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="3" width="18" height="11" rx="2" fill="currentColor" fill-opacity="0.2" />
                     <line x1="7" y1="7" x2="11" y2="7" />
@@ -38,7 +38,7 @@
                 </svg>
             </div>
             <div class="min-w-0">
-                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight truncate capitalize flex items-center gap-2.5">
+                <h1 class="text-lg sm:text-xl font-black text-white tracking-tight capitalize flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
                     <span class="truncate">{{ $eventName ?: 'Kassasysteem' }}</span>
                 </h1>
@@ -46,20 +46,20 @@
         </div>
 
         <!-- Clock & Vakwaarde pills -->
-        <div class="flex items-center gap-2.5 shrink-0">
+        <div class="flex items-center gap-2 shrink-0">
             @if($cardPrice > 0)
-                <div class="px-3.5 py-1.5 rounded-xl bg-fuchsia-950/70 border border-fuchsia-500/50 backdrop-blur-md text-sm font-bold text-fuchsia-300 hidden sm:flex items-center gap-1.5 shrink-0 shadow-sm">
-                    <span class="text-sm">🎟️</span>
-                    <span>Consumptiekaart = € {{ number_format($cardPrice / 100, 2, ',', '.') }}</span>
+                <div class="px-3 py-1.5 rounded-xl bg-fuchsia-950/70 border border-fuchsia-500/50 backdrop-blur-md text-xs sm:text-sm font-bold text-fuchsia-300 hidden md:flex items-center gap-1.5 shrink-0 shadow-sm">
+                    <span class="text-xs">🎟️</span>
+                    <span>Kaart: € {{ number_format($cardPrice / 100, 2, ',', '.') }}</span>
                 </div>
             @endif
             @if($vakPrice > 0)
-                <div class="px-3.5 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/60 backdrop-blur-md text-sm font-semibold text-slate-200 flex items-center gap-1.5 shrink-0 shadow-sm">
+                <div class="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/60 backdrop-blur-md text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-1.5 shrink-0 shadow-sm">
                     <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
                     <span>1 vakje = € {{ number_format($vakPrice / 100, 2, ',', '.') }}</span>
                 </div>
             @endif
-            <div class="px-3 py-1.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm font-mono font-bold text-slate-300 shrink-0"
+            <div class="px-3 py-1.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-xs sm:text-sm font-mono font-bold text-slate-300 shrink-0"
                  x-data="{ time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }"
                  x-init="setInterval(() => time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), 1000)"
                  x-text="time">
