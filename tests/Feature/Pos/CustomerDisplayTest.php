@@ -145,18 +145,39 @@ class CustomerDisplayTest extends TestCase
             ->assertSee('20 vakjes');
     }
 
-    public function test_customer_display_shows_poef_info_on_idle_scan(): void
+    public function test_customer_display_does_not_show_kassa_number(): void
     {
-        // 1. Terminal receives idle card scan without an active cart
-        Livewire::test(Terminal::class)
-            ->call('handleScan', '04A23B19');
-
-        // 2. Customer display should show poef_info state
         Livewire::test(CustomerDisplay::class)
-            ->assertSet('state', 'poef_info')
-            ->assertSet('scannedPoefName', 'Jonathan')
-            ->assertSee('Jonathan')
-            ->assertSee('Jonathan / Febe')
-            ->assertSee('Huidig saldo / Totaal uitgegeven vanavond:');
+            ->assertDontSee('Kassa 1')
+            ->assertDontSee('Kassa 2');
+    }
+
+    public function test_consumptiekaart_only_order_does_not_show_or_calculate_vakjes_on_customer_display(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart');
+
+        Livewire::test(CustomerDisplay::class)
+            ->assertSet('state', 'cart')
+            ->assertSet('total', 2000)
+            ->assertSet('vakjes', 0)
+            ->assertSee('Consumptiekaart')
+            ->assertSee('€ 20,00')
+            ->assertDontSee('Of consumptiekaart:')
+            ->assertDontSee('Vakjes voor consumpties:');
+    }
+
+    public function test_consumptiekaart_with_drinks_order_only_calculates_vakjes_for_drinks(): void
+    {
+        Livewire::test(Terminal::class)
+            ->call('addDrankkaart')
+            ->call('addToOrder', $this->cola->id);
+
+        Livewire::test(CustomerDisplay::class)
+            ->assertSet('state', 'cart')
+            ->assertSet('total', 2250)
+            ->assertSet('vakjes', 3)
+            ->assertSee('Vakjes voor consumpties:')
+            ->assertSee('3 vakjes');
     }
 }

@@ -1125,7 +1125,7 @@ class Terminal extends Component
         $this->scannedPoefName = null;
         $this->lastPoefTotalSpent = null;
 
-        $this->storeOrder($event, PaymentMode::Drankkaart, vakjes: $this->calculateVakjes($event, $this->calculateTotal()));
+        $this->storeOrder($event, PaymentMode::Drankkaart, vakjes: $this->calculateDrinksVakjes());
 
         $this->showDrankkaartModal = false;
         $this->paymentSuccess = true;
@@ -1142,17 +1142,21 @@ class Terminal extends Component
                 ? 'awaiting_payment'
                 : (! empty($this->orderItems) ? 'cart' : 'idle')));
 
+        $cardProductId = $event ? $this->resolvePunchCardProductId($event) : null;
+
         $data = [
             'kassa_id' => $this->kassaId,
             'state' => $state,
             'event_name' => $event?->name ?? 'Kassa',
             'vak_price' => $event?->vak_price ?? 100,
             'card_price' => $event?->card_price ?? 2000,
-            'items' => array_map(function (array $item) use ($event): array {
+            'items' => array_map(function (array $item) use ($event, $cardProductId): array {
                 $price = (int) $item['price'];
                 $quantity = (int) $item['quantity'];
                 $vakPrice = max($event?->vak_price ?? 100, 1);
-                $isDrankkaart = (bool) ($item['is_drankkaart'] ?? false);
+                $isDrankkaart = (bool) ($item['is_drankkaart'] ?? false)
+                    || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])
+                    || ($cardProductId !== null && ($item['product_id'] ?? null) === $cardProductId);
                 $vakjes = $isDrankkaart ? 0 : (int) ceil(($price * $quantity) / $vakPrice);
 
                 return [
@@ -1165,7 +1169,7 @@ class Terminal extends Component
                 ];
             }, $this->orderItems),
             'total' => $this->calculateTotal(),
-            'vakjes' => $event ? $this->calculateVakjes($event, $this->calculateTotal()) : 0,
+            'vakjes' => $this->calculateDrinksVakjes(),
             'has_drankkaart' => $this->hasDrankkaartInCart(),
             'card_total' => $this->calculateCardTotal(),
             'drinks_total' => $this->calculateDrinksTotal(),
@@ -1356,7 +1360,7 @@ class Terminal extends Component
             'cardTotal' => $this->calculateCardTotal(),
             'drinksTotal' => $this->calculateDrinksTotal(),
             'drinksVakjes' => $this->calculateDrinksVakjes(),
-            'vakjes' => $event ? $this->calculateVakjes($event, $total) : 0,
+            'vakjes' => $this->calculateDrinksVakjes(),
             'hasDrankkaart' => $this->hasDrankkaartInCart(),
             'categories' => $this->eventCategories(),
             'products' => $products,

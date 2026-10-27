@@ -38,13 +38,10 @@
                 </svg>
             </div>
             <div class="min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="text-sm sm:text-base font-black uppercase tracking-wider text-indigo-400 block leading-none">
-                        Kassa {{ $kassaId }}
-                    </span>
-                </div>
-                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight truncate capitalize">{{ $eventName ?: 'Kassasysteem' }}</h1>
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight truncate capitalize flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                    <span class="truncate">{{ $eventName ?: 'Kassasysteem' }}</span>
+                </h1>
             </div>
         </div>
 
@@ -175,7 +172,13 @@
 
                     @if($vakjes > 0)
                         <div class="p-3 sm:p-3.5 rounded-2xl bg-fuchsia-950/60 border border-fuchsia-500/50 text-right shadow-sm">
-                            <span class="text-xs font-bold text-fuchsia-300 block mb-0.5">Of consumptiekaart:</span>
+                            <span class="text-xs font-bold text-fuchsia-300 block mb-0.5">
+                                @if(!empty($hasDrankkaart))
+                                    Vakjes voor consumpties:
+                                @else
+                                    Of consumptiekaart:
+                                @endif
+                            </span>
                             <span class="text-2xl sm:text-3xl font-black text-fuchsia-300">
                                 {{ $vakjes }} {{ $vakjes === 1 ? 'vakje' : 'vakjes' }}
                             </span>
@@ -326,10 +329,10 @@
     <footer class="pt-3 pb-1 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500 font-medium shrink-0">
         <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            <span>Verbonden met Kassa {{ $kassaId }}</span>
+            <span>Live verbonden</span>
         </div>
         <div>
-            Kassa Systeem &copy; {{ date('Y') }} &bull; Klantendisplay
+            Klantenscherm &bull; {{ date('Y') }}
         </div>
     </footer>
 
