@@ -70,7 +70,7 @@
             </nav>
 
             <div class="p-6 border-t border-slate-700/50">
-                <a href="{{ route('dashboard') }}" class="flex items-center justify-center gap-2 w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors border border-slate-600">
+                <a href="{{ route('admin.exit') }}" class="flex items-center justify-center gap-2 w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors border border-slate-600 font-semibold text-sm">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
                     Terug naar Hoofdmenu
                 </a>
@@ -86,9 +86,13 @@
                 </h1>
                 
                 <div class="flex items-center gap-4">
-                    <span class="text-slate-400 font-medium bg-slate-800 px-4 py-2 rounded-full border border-slate-700">
+                    <span class="text-slate-400 font-medium bg-slate-800 px-4 py-2 rounded-full border border-slate-700 text-sm">
                         {{ now()->format('H:i') }}
                     </span>
+                    <a href="{{ route('admin.lock') }}" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all shadow-sm" title="Beheer afsluiten en vergrendelen">
+                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <span>Beheer Afsluiten</span>
+                    </a>
                 </div>
             </header>
 

@@ -20,7 +20,7 @@
         <!-- Top Navigation Bar (Responsive, in-flow centered between buttons and clock) -->
         <div x-data="nfcScanner()" class="h-16 border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-6 z-40 relative shadow-sm gap-4 shrink-0">
             <div class="flex items-center gap-3 shrink-0">
-                <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 rounded-xl transition-all text-slate-300 hover:text-white shrink-0" title="Hoofdmenu">
+                <a href="{{ route('pos.exit') }}" class="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 rounded-xl transition-all text-slate-300 hover:text-white shrink-0" title="Kassa afsluiten en naar Hoofdmenu">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>

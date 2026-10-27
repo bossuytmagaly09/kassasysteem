@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Pos;
 
+use App\Livewire\Admin\PinLogin;
 use App\Livewire\Pos\CustomerDisplay;
 use App\Livewire\Pos\Terminal;
 use App\Models\Card;
@@ -178,16 +179,53 @@ class MultiKassaAndCashierSessionTest extends TestCase
             ->assertSet('total', 500);
     }
 
-    public function test_admin_and_scanner_and_display_routes_are_directly_accessible(): void
+    public function test_admin_pin_protects_admin_routes_and_unlocks_with_1989(): void
     {
-        // Admin, scanner and customer display routes are directly accessible
+        config(['kassa.enforce_pin_in_tests' => true]);
+
+        // Unauthenticated access to admin routes redirects to /admin/pin
+        $this->get(route('admin.dashboard'))->assertRedirect(route('admin.pin'));
+        $this->get(route('admin.sales'))->assertRedirect(route('admin.pin'));
+
+        // PinLogin unlocks with 1989 and redirects to intended URL (admin.sales)
+        Livewire::test(PinLogin::class)
+            ->call('appendDigit', '1')
+            ->call('appendDigit', '9')
+            ->call('appendDigit', '8')
+            ->call('appendDigit', '9')
+            ->assertRedirect(route('admin.sales'));
+
+        $this->assertTrue(session('admin_pin_authenticated'));
+
+        // With session, admin routes are accessible
+        $this->withSession(['admin_pin_authenticated' => true])
+            ->get(route('admin.dashboard'))
+            ->assertOk();
+    }
+
+    public function test_visiting_dashboard_or_exit_locks_beheer_and_kassa(): void
+    {
+        // Set up active sessions
+        session([
+            'admin_pin_authenticated' => true,
+            'pos_cashier_1' => 'Kassier 1',
+            'pos_cashier_session_id_1' => 999,
+        ]);
+
+        // Visiting dashboard locks beheer and cashier sessions
+        $this->get(route('dashboard'))->assertOk();
+
+        $this->assertNull(session('admin_pin_authenticated'));
+        $this->assertNull(session('pos_cashier_1'));
+        $this->assertNull(session('pos_cashier_session_id_1'));
+    }
+
+    public function test_scanner_and_customer_display_routes_are_always_directly_accessible(): void
+    {
+        config(['kassa.enforce_pin_in_tests' => true]);
+
+        // Scanner (card testing tool) and customer display are never blocked
         $this->get('/scanner')->assertOk();
-        $this->get(route('admin.dashboard'))->assertOk();
-        $this->get(route('admin.sales'))->assertOk();
-        $this->get(route('admin.products'))->assertOk();
-        $this->get(route('admin.categories'))->assertOk();
-        $this->get(route('admin.events'))->assertOk();
-        $this->get(route('admin.import'))->assertOk();
         $this->get('/klantenscherm')->assertOk();
         $this->get('/display/2')->assertOk();
     }
