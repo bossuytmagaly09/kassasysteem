@@ -400,7 +400,7 @@ class KoppelPoef extends Component
             } elseif ($apiSuccess) {
                 $this->message = "Gesynchroniseerd met Beheer API! {$pushed} actieve kaarten succesvol doorgestuurd.";
             } elseif ($dbSuccess) {
-                $this->message = "Gesynchroniseerd met beheerdatabase! {$pushed} kaarten gepusht naar drank website.";
+                $this->message = "Gesynchroniseerd met beheerdatabase! {$pushed} kaarten gepusht naar beheerswebsite.";
             } else {
                 $totalLocal = $activeCards->count();
                 $this->message = "{$totalLocal} koppelingen zijn lokaal actief opgeslagen. Tip: vul in .env de DB_EXTERNAL_PASSWORD of BEHEER_API_TOKEN in om online te synchroniseren.";

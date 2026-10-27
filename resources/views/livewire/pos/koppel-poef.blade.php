@@ -16,7 +16,7 @@
                         </div>
                         <div>
                             <h2 class="text-2xl font-black text-slate-100">Koppel Poef & Identificatie</h2>
-                            <p class="text-xs sm:text-sm text-slate-400">Koppel een bankkaart, badge of nfc kaart aan een lid van het drankplatform.</p>
+                            <p class="text-xs sm:text-sm text-slate-400">Koppel een bankkaart, badge of nfc kaart aan een lid van de beheerswebsite.</p>
                         </div>
                     </div>
 
@@ -202,7 +202,7 @@
                         <!-- Tab 2: Overzicht Gekoppelde Media -->
                         <div class="space-y-4">
                             <div class="flex items-center justify-between text-xs text-slate-400 bg-slate-800/40 p-3 rounded-xl border border-slate-700/50">
-                                <span>Alle koppelingen worden automatisch bewaard en gesynchroniseerd met de drank beheerwebsite.</span>
+                                <span>Alle koppelingen worden automatisch bewaard en gesynchroniseerd met de beheerswebsite.</span>
                                 <span class="font-bold text-slate-300">Totaal actief: {{ $this->linkedCards->count() }}</span>
                             </div>
 
