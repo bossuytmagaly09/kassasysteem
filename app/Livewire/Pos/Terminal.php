@@ -1360,6 +1360,9 @@ class Terminal extends Component
             'hasDrankkaart' => $this->hasDrankkaartInCart(),
             'categories' => $this->eventCategories(),
             'products' => $products,
-        ])->layout('layouts.pos', ['kassaId' => $this->kassaId]);
+        ])->layout('layouts.pos', [
+            'kassaId' => $this->kassaId,
+            'cashierName' => $this->cashierName,
+        ]);
     }
 }

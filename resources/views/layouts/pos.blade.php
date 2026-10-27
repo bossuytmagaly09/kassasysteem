@@ -96,11 +96,26 @@
                 @endif
             </div>
             
-            <div class="flex items-center gap-2 text-slate-400 font-medium text-sm shrink-0"
-                 x-data="{ time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }"
-                 x-init="setInterval(() => time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 1000)">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span x-text="time">{{ now()->format('H:i') }}</span>
+            @php
+                $activeCashier = $cashierName ?? session("pos_cashier_{$currentKassa}") ?? null;
+            @endphp
+            <div class="flex items-center gap-2.5 shrink-0">
+                @if($activeCashier)
+                    <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-950/60 border border-indigo-500/40 shadow-sm">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                        <div class="text-xs">
+                            <span class="text-indigo-300/80 font-medium">Kassier:</span>
+                            <strong class="text-white font-bold ml-1">{{ $activeCashier }}</strong>
+                        </div>
+                    </div>
+                @endif
+
+                <div class="flex items-center gap-2 text-slate-400 font-medium text-sm shrink-0 bg-slate-800/50 px-3 py-1.5 rounded-xl border border-slate-700/50"
+                     x-data="{ time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }"
+                     x-init="setInterval(() => time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 1000)">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span x-text="time">{{ now()->format('H:i') }}</span>
+                </div>
             </div>
         </div>
 

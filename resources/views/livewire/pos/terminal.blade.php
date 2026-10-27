@@ -51,22 +51,13 @@
                 </p>
 
                 <!-- Badge Scan / Type Input -->
-                <div class="w-full mb-2.5 text-left">
-                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Badge Scannen of Kaart / Naam:</label>
+                <div class="w-full mb-3 text-left">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Personeelsbadge Scannen of Code:</label>
                     <input type="text"
                            x-ref="lockBadgeInput"
                            wire:keydown.enter="unlockWithBadgeOrInput($event.target.value)"
-                           placeholder="Scan personeelsbadge of typ + Enter"
-                           class="w-full bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 text-center">
-                </div>
-
-                <!-- Optional Cashier Name input -->
-                <div class="w-full mb-2.5 text-left">
-                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Uw Naam (optioneel):</label>
-                    <input type="text"
-                           wire:model="customCashierName"
-                           placeholder="Typ uw naam (bv. Bjarne)"
-                           class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-center">
+                           placeholder="Scan badge of typ code/naam + Enter"
+                           class="w-full bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 text-center">
                 </div>
 
                 <!-- PIN dots indicator -->
