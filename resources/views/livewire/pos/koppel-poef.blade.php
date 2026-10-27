@@ -21,15 +21,26 @@
                     </div>
 
                     <div class="flex items-center gap-2">
+                        <!-- Pull Button -->
+                        <button type="button"
+                                wire:click="pullFromBeheer"
+                                wire:loading.attr="disabled"
+                                class="px-3.5 py-2 bg-indigo-700/80 hover:bg-indigo-600 border border-indigo-500/60 rounded-xl text-white text-sm font-semibold flex items-center gap-2 transition-all shadow-sm">
+                            <svg class="w-4 h-4 text-indigo-200" wire:loading.class="animate-spin" wire:target="pullFromBeheer" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            <span>Ophalen (Pull)</span>
+                        </button>
+
                         <!-- Push / Sync Button -->
                         <button type="button"
                                 wire:click="pushAndSync"
                                 wire:loading.attr="disabled"
-                                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all">
-                            <svg class="w-4 h-4 text-emerald-400" wire:loading.class="animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-slate-200 text-sm font-semibold flex items-center gap-2 transition-all">
+                            <svg class="w-4 h-4 text-emerald-400" wire:loading.class="animate-spin" wire:target="pushAndSync" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>
-                            <span>Push naar Beheer</span>
+                            <span>Pushen naar Beheer</span>
                         </button>
 
                         <!-- Close Modal Button -->

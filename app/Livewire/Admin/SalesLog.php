@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\CashierSession;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -109,12 +110,19 @@ class SalesLog extends Component
                 $term = "%{$this->search}%";
                 $q->where(function ($sub) use ($term): void {
                     $sub->where('uuid', 'like', $term)
+                        ->orWhere('cashier_name', 'like', $term)
+                        ->orWhere('device', 'like', $term)
                         ->orWhereHas('poef', fn ($p) => $p->where('name', 'like', $term)->orWhere('poef_name', 'like', $term))
                         ->orWhereHas('items', fn ($i) => $i->where('product_name', 'like', $term));
                 });
             })
             ->latest()
             ->paginate(25);
+
+        $cashierSessions = CashierSession::query()
+            ->latest('login_at')
+            ->take(100)
+            ->get();
 
         return view('livewire.admin.sales-log', [
             'events' => $events,
@@ -133,6 +141,7 @@ class SalesLog extends Component
             'drankkaartenRevenue' => $drankkaartenRevenue,
             'productSales' => $productSales,
             'orders' => $orders,
+            'cashierSessions' => $cashierSessions,
         ])->layout('layouts.admin');
     }
 }

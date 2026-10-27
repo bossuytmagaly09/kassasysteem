@@ -1,4 +1,88 @@
-<div class="flex-1 flex w-full h-full overflow-hidden p-4 gap-4">
+<div class="flex-1 flex w-full h-full overflow-hidden p-4 gap-4 relative">
+
+    @if($isLocked)
+        <!-- Full-screen Cashier Lock Screen -->
+        <div wire:key="pos-lock-screen"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 sm:p-6 select-none"
+             x-data
+             @keydown.escape.window="$wire.clearLockPin()">
+            
+            <div class="bg-slate-900 border-2 border-indigo-500/50 p-6 sm:p-8 rounded-3xl shadow-2xl max-w-md w-full flex flex-col items-center text-center relative overflow-hidden">
+                
+                <!-- Register Badge -->
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 font-bold text-sm mb-4">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Kassa {{ $kassaId }}</span>
+                </div>
+
+                <!-- Icon -->
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-4 shadow-xl shadow-indigo-500/25 border border-indigo-400/40 flex items-center justify-center text-white mb-4">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke-width="2"/>
+                        <path d="M7 11V7a5 5 0 0110 0v4" stroke-width="2"/>
+                    </svg>
+                </div>
+
+                <h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">
+                    Kassa Vergrendeld
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-400 mb-4">
+                    Scan uw personeelsbadge of toets uw pincode in om te starten.
+                </p>
+
+                <!-- Optional Cashier Name input -->
+                <div class="w-full mb-3 text-left">
+                    <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Uw Naam (optioneel):</label>
+                    <input type="text"
+                           wire:model="customCashierName"
+                           placeholder="Typ uw naam (bv. Bjarne)"
+                           class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-center">
+                </div>
+
+                <!-- PIN dots indicator -->
+                <div class="flex items-center justify-center gap-3 mb-4 py-2 px-6 rounded-2xl bg-slate-950/70 border border-slate-800 w-full">
+                    @for($i = 0; $i < 4; $i++)
+                        <div class="w-4 h-4 rounded-full transition-all duration-150 {{ strlen($enteredPin) > $i ? 'bg-indigo-400 scale-110 shadow-lg shadow-indigo-500/50' : 'bg-slate-700' }}"></div>
+                    @endfor
+                </div>
+
+                @if($lockError)
+                    <p class="text-red-400 text-xs font-semibold mb-3">{{ $lockError }}</p>
+                @endif
+
+                <!-- Keypad (3x4 grid) -->
+                <div class="grid grid-cols-3 gap-2.5 w-full mb-3">
+                    @foreach(['1', '2', '3', '4', '5', '6', '7', '8', '9'] as $digit)
+                        <button type="button"
+                                wire:click="appendLockPin('{{ $digit }}')"
+                                class="h-14 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl font-black text-white rounded-2xl shadow transition-all active:scale-95 flex items-center justify-center border border-slate-700/60">
+                            {{ $digit }}
+                        </button>
+                    @endforeach
+                    <button type="button"
+                            wire:click="clearLockPin"
+                            class="h-14 bg-slate-800 hover:bg-red-950 text-red-400 font-black rounded-2xl text-lg flex items-center justify-center border border-slate-700/60 active:scale-95 transition-all">
+                        C
+                    </button>
+                    <button type="button"
+                            wire:click="appendLockPin('0')"
+                            class="h-14 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl font-black text-white rounded-2xl shadow transition-all active:scale-95 flex items-center justify-center border border-slate-700/60">
+                        0
+                    </button>
+                    <button type="button"
+                            wire:click="unlockWithPin"
+                            class="h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black rounded-2xl text-base flex items-center justify-center shadow-lg active:scale-95 transition-all">
+                        OK
+                    </button>
+                </div>
+
+                <div class="text-[11px] text-slate-500 flex items-center gap-1.5 mt-1">
+                    <svg class="w-3.5 h-3.5 text-indigo-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                    <span>NFC scanner actief — scan badge om direct te starten</span>
+                </div>
+            </div>
+        </div>
+    @endif
 
     @if(! $event)
         <div class="flex-1 flex items-center justify-center">
@@ -18,13 +102,22 @@
         <!-- Category Tabs & Quick Drankkaart -->
         <div class="flex p-4 gap-3 border-b border-slate-700/50 bg-slate-900/30 items-center justify-between overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden shrink-0">
             <div class="flex gap-3 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <button
+                    type="button"
+                    wire:click="setCategory('all')"
+                    class="px-8 py-4 text-xl font-bold rounded-2xl whitespace-nowrap transition-all duration-200 border shrink-0
+                    {{ $activeCategoryId === 'all'
+                        ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)]'
+                        : 'bg-slate-800/50 border-slate-600/50 text-slate-300 hover:bg-slate-700 hover:text-white' }}">
+                    Alles
+                </button>
                 @foreach($categories as $category)
                     <button
                         type="button"
                         wire:key="category-{{ $category->id }}"
                         wire:click="setCategory({{ $category->id }})"
                         class="px-8 py-4 text-xl font-bold rounded-2xl whitespace-nowrap transition-all duration-200 border shrink-0
-                        {{ $activeCategoryId == $category->id
+                        {{ (string) $activeCategoryId === (string) $category->id
                             ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_-5px_rgba(99,102,241,0.5)]'
                             : 'bg-slate-800/50 border-slate-600/50 text-slate-300 hover:bg-slate-700 hover:text-white' }}">
                         {{ $category->name }}
@@ -77,18 +170,31 @@
     <!-- Right Side: Order Summary -->
     <div class="w-96 lg:w-[26rem] shrink-0 flex flex-col bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-xl overflow-hidden relative">
 
-        <!-- Header -->
-        <div class="p-6 bg-slate-900/30 border-b border-slate-700/50 flex justify-between items-center shrink-0">
-            <h2 class="text-2xl font-bold text-white flex items-center gap-3">
-                <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                <span>Winkelmandje</span>
-            </h2>
-            <div class="flex gap-2 items-center">
+        <!-- Header with Cashier & Register Info -->
+        <div class="p-4 sm:p-5 bg-slate-900/40 border-b border-slate-700/50 flex justify-between items-center shrink-0 gap-2">
+            <div class="min-w-0">
+                <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                    <span>Winkelmandje</span>
+                </h2>
+                <div class="text-xs text-indigo-300 font-semibold flex items-center gap-1.5 mt-1 truncate">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                    <span class="truncate">Kassa {{ $kassaId }} • {{ $cashierName ?: 'Medewerker' }}</span>
+                </div>
+            </div>
+            <div class="flex gap-2 items-center shrink-0">
+                <button type="button"
+                        wire:click="lockKassa"
+                        class="px-2.5 py-1.5 bg-slate-800 hover:bg-amber-950/40 border border-slate-600 hover:border-amber-500/50 rounded-xl text-xs font-bold text-slate-300 hover:text-amber-300 transition-all flex items-center gap-1.5 shadow-sm"
+                        title="Kassa vergrendelen">
+                    <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    <span>Vergrendel</span>
+                </button>
                 <button type="button" wire:click="clearOrder" class="p-2 bg-slate-800 text-slate-400 hover:text-red-400 rounded-full transition-colors" title="Winkelmandje leegmaken">
                     <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
-                <span class="bg-indigo-500/20 text-indigo-300 py-1 px-3 rounded-full text-sm font-semibold border border-indigo-500/30">
-                    {{ collect($orderItems)->sum('quantity') }} items
+                <span class="bg-indigo-500/20 text-indigo-300 py-1 px-2.5 rounded-full text-xs font-semibold border border-indigo-500/30">
+                    {{ collect($orderItems)->sum('quantity') }}
                 </span>
             </div>
         </div>
@@ -236,12 +342,13 @@
                     </div>
 
                     @if($cardPaymentMethod === 'cash')
-                        <!-- Cash Payment: Wide 2-column layout (Left: Price & Doorstreep Info, Right: Numpad) -->
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-5 my-3 items-stretch">
+                        <!-- Cash Payment: Strict 2-column landscape layout (Left: Info, Right: Numpad & Bevestig) -->
+                        <div class="grid grid-cols-2 gap-6 my-4 items-stretch flex-1 overflow-hidden">
                             
                             <!-- Left Column: Te betalen, Eventuele Drankjes & Wisselgeld -->
-                            <div class="md:col-span-5 lg:col-span-5 flex flex-col justify-between gap-3">
-                                <!-- Te Betalen Consumptiekaart Card -->
+                            <div class="flex flex-col justify-between gap-3 h-full">
+                                <div class="space-y-3">
+                                    <!-- Te Betalen Consumptiekaart Card -->
                                 <div class="bg-slate-800/90 rounded-2xl p-4 border border-slate-700/80 flex flex-col justify-center">
                                     <div class="flex items-center justify-between">
                                         <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block">Te betalen voor consumptiekaart:</span>
@@ -298,10 +405,18 @@
                                 @if($paymentError)
                                     <p class="text-red-400 text-xs font-semibold text-center">{{ $paymentError }}</p>
                                 @endif
+                                </div>
+
+                                <!-- Left Column Bottom: Terug button -->
+                                <button type="button"
+                                        wire:click="closeDrankkaart"
+                                        class="w-full py-4 text-base sm:text-lg font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600 rounded-2xl transition-all text-center shrink-0 mt-3">
+                                    Terug
+                                </button>
                             </div>
 
                             <!-- Right Column: Touchscreen Ontvangen Bedrag + Large Keypad -->
-                            <div class="md:col-span-7 lg:col-span-7 flex flex-col bg-slate-950/80 p-4 sm:p-5 rounded-2xl border border-slate-800">
+                            <div class="flex flex-col justify-between bg-slate-950/80 p-4 sm:p-5 rounded-2xl border border-slate-800 h-full">
                                 <div class="flex justify-between items-center mb-2">
                                     <label class="text-sm font-bold text-slate-300">Ontvangen bedrag (€):</label>
                                     <button type="button"
@@ -334,83 +449,94 @@
                                     <button type="button" wire:click="appendCashDigit('0')" class="h-16 sm:h-18 lg:h-20 bg-slate-800 hover:bg-slate-700 active:bg-indigo-600 text-2xl sm:text-3xl lg:text-4xl font-black text-white rounded-2xl shadow transition-all active:scale-95 flex items-center justify-center">0</button>
                                     <button type="button" wire:click="backspaceCashTendered" class="h-16 sm:h-18 lg:h-20 bg-slate-800 hover:bg-red-900 text-red-400 rounded-2xl shadow transition-all active:scale-95 flex items-center justify-center font-black text-2xl sm:text-3xl lg:text-4xl" title="Backspace">⌫</button>
                                 </div>
+                                <button type="button"
+                                        id="btn-drankkaart-klaar"
+                                        wire:click="completeDrankkaart"
+                                        class="w-full py-4 px-4 text-base sm:text-lg font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2 shrink-0 mt-3">
+                                    <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Bevestig Betaling</span>
+                                </button>
                             </div>
                         </div>
                     @else
-                        <!-- QR Code / Payconiq / Bank App Flow (Wide layout matching Cash) -->
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-5 my-3 items-stretch">
-                            <!-- Left Column: Price & Drink info -->
-                            <div class="md:col-span-5 lg:col-span-5 flex flex-col justify-between gap-3">
-                                <div class="bg-slate-800/90 rounded-2xl p-4 border border-slate-700/80 flex flex-col justify-center">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block">Te betalen voor consumptiekaart:</span>
-                                        @if($drinksTotal > 0)
-                                            <span class="text-xs text-slate-400">Drank: € {{ number_format($drinksTotal / 100, 2, ',', '.') }}</span>
-                                        @endif
-                                    </div>
-                                    <div class="text-3xl sm:text-4xl font-black text-cyan-400 mt-1 whitespace-nowrap">
-                                        € {{ number_format($cardTotal / 100, 2, ',', '.') }}
-                                    </div>
-                                </div>
-
-                                @if($drinksTotal > 0)
-                                    <div class="p-4 rounded-2xl bg-fuchsia-950/60 border-2 border-fuchsia-500/50 text-white flex items-center justify-between shadow-lg">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 flex items-center justify-center text-fuchsia-300 shrink-0">
-                                                <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
-                                            </div>
-                                            <div>
-                                                <span class="text-xs uppercase tracking-wider font-black text-fuchsia-300 block">Direct doorstrepen:</span>
-                                                <span class="text-xs text-slate-300">op de nieuwe consumptiekaart</span>
-                                            </div>
+                        <!-- QR Code / Payconiq / Bank App Flow (Strict 2-column landscape layout matching Cash) -->
+                        <div class="grid grid-cols-2 gap-6 my-4 items-stretch flex-1 overflow-hidden">
+                            <!-- Left Column: Price & Drink info + Terug button -->
+                            <div class="flex flex-col justify-between gap-3 h-full">
+                                <div class="space-y-3">
+                                    <div class="bg-slate-800/90 rounded-2xl p-4 border border-slate-700/80 flex flex-col justify-center">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block">Te betalen voor consumptiekaart:</span>
+                                            @if($drinksTotal > 0)
+                                                <span class="text-xs text-slate-400">Drank: € {{ number_format($drinksTotal / 100, 2, ',', '.') }}</span>
+                                            @endif
                                         </div>
-                                        <div class="flex items-baseline gap-1.5 bg-fuchsia-500/20 border border-fuchsia-400/40 px-3.5 py-1.5 rounded-xl">
-                                            <span class="text-3xl sm:text-4xl font-black text-fuchsia-400">{{ $drinksVakjes }}</span>
-                                            <span class="text-sm font-bold text-fuchsia-300">vakjes</span>
+                                        <div class="text-3xl sm:text-4xl font-black text-cyan-400 mt-1 whitespace-nowrap">
+                                            € {{ number_format($cardTotal / 100, 2, ',', '.') }}
                                         </div>
                                     </div>
-                                @endif
 
-                                <div class="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 text-slate-300 text-xs">
-                                    <p class="font-bold text-slate-200 mb-1">Instructie voor kassa:</p>
-                                    <p>Vraag de klant het bedrag van <strong class="text-cyan-300">€ {{ number_format($cardTotal / 100, 2, ',', '.') }}</strong> over te maken via Payconiq of de Bank app en klik vervolgens op de knop hieronder.</p>
+                                    @if($drinksTotal > 0)
+                                        <div class="p-4 rounded-2xl bg-fuchsia-950/60 border-2 border-fuchsia-500/50 text-white flex items-center justify-between shadow-lg">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-10 h-10 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/40 flex items-center justify-center text-fuchsia-300 shrink-0">
+                                                    <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <span class="text-xs uppercase tracking-wider font-black text-fuchsia-300 block">Direct doorstrepen:</span>
+                                                    <span class="text-xs text-slate-300">op de nieuwe consumptiekaart</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-baseline gap-1.5 bg-fuchsia-500/20 border border-fuchsia-400/40 px-3.5 py-1.5 rounded-xl">
+                                                <span class="text-3xl sm:text-4xl font-black text-fuchsia-400">{{ $drinksVakjes }}</span>
+                                                <span class="text-sm font-bold text-fuchsia-300">vakjes</span>
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    <div class="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 text-slate-300 text-xs">
+                                        <p class="font-bold text-slate-200 mb-1">Instructie voor kassa:</p>
+                                        <p>Laat de klant het bedrag van <strong class="text-cyan-300">€ {{ number_format($cardTotal / 100, 2, ',', '.') }}</strong> scannen en betalen via Payconiq of de bank app. Klik daarna op 'Betaling Voltooid'.</p>
+                                    </div>
+
+                                    @if($paymentError)
+                                        <p class="text-red-400 text-xs font-semibold text-center">{{ $paymentError }}</p>
+                                    @endif
                                 </div>
 
-                                @if($paymentError)
-                                    <p class="text-red-400 text-xs font-semibold text-center">{{ $paymentError }}</p>
-                                @endif
+                                <button type="button"
+                                        wire:click="closeDrankkaart"
+                                        class="w-full py-4 text-base sm:text-lg font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600 rounded-2xl transition-all text-center shrink-0 mt-3">
+                                    Terug
+                                </button>
                             </div>
 
-                            <!-- Right Column: QR Code Visual & Instructions -->
-                            <div class="md:col-span-7 lg:col-span-7 flex flex-col justify-center items-center bg-slate-950/80 p-6 sm:p-8 rounded-2xl border border-slate-800 text-center">
-                                <div class="w-16 h-16 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 mb-4 shadow-lg shadow-cyan-950/50">
-                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                            <!-- Right Column: QR Code Visual & Confirm Button -->
+                            <div class="flex flex-col justify-between bg-slate-950/80 p-5 rounded-2xl border border-slate-800 h-full">
+                                <div class="flex flex-col items-center justify-center text-center my-auto p-4">
+                                    <div class="w-20 h-20 rounded-3xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 mb-4 shadow-xl shadow-cyan-950/50">
+                                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                                    </div>
+                                    <h4 class="text-2xl font-black text-cyan-200 mb-2">QR / Payconiq Betaling</h4>
+                                    <p class="text-base text-slate-300 max-w-sm mb-4">
+                                        Klant betaalt <strong class="text-cyan-300 text-xl">€ {{ number_format($cardTotal / 100, 2, ',', '.') }}</strong> via smartphone.
+                                    </p>
+                                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-sm text-cyan-300 font-bold">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                                        Registratie als QR-betaling
+                                    </div>
                                 </div>
-                                <h4 class="text-2xl font-black text-cyan-200 mb-2">QR / Payconiq Betaling</h4>
-                                <p class="text-base text-slate-300 max-w-md mb-4">
-                                    Klant betaalt <strong class="text-cyan-300 text-xl">€ {{ number_format($cardTotal / 100, 2, ',', '.') }}</strong> via smartphone.
-                                </p>
-                                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-sm text-cyan-300 font-bold">
-                                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                                    Registratie als QR-betaling
-                                </div>
+
+                                <button type="button"
+                                        id="btn-drankkaart-klaar"
+                                        wire:click="completeDrankkaart"
+                                        class="w-full py-4 px-4 text-base sm:text-lg font-black text-white bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 active:scale-[0.98] rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2 shrink-0 mt-3">
+                                    <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Betaling Voltooid (QR)</span>
+                                </button>
                             </div>
                         </div>
                     @endif
-
-                    <!-- Pinned Footer Action Buttons (ALWAYS at bottom across full width) -->
-                    <div class="flex gap-4 pt-3 border-t border-slate-800 shrink-0">
-                        <button type="button" wire:click="closeDrankkaart" class="w-1/3 py-3.5 sm:py-4 text-base sm:text-lg font-bold text-slate-300 border border-slate-600 rounded-2xl hover:bg-slate-800 transition-all text-center">
-                            Terug
-                        </button>
-                        <button type="button"
-                                id="btn-drankkaart-klaar"
-                                wire:click="completeDrankkaart"
-                                class="w-2/3 py-3.5 sm:py-4 px-4 text-base sm:text-lg font-black text-white bg-gradient-to-r {{ $cardPaymentMethod === 'qr' ? 'from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500' : 'from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500' }} rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2">
-                            <svg class="w-6 h-6 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                            <span>{{ $cardPaymentMethod === 'qr' ? 'Betaling Voltooid (QR)' : 'Bevestig Betaling' }}</span>
-                        </button>
-                    </div>
                 </div>
             </div>
         @else

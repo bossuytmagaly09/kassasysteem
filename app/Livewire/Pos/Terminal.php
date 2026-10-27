@@ -3,6 +3,7 @@
 namespace App\Livewire\Pos;
 
 use App\Models\Card;
+use App\Models\CashierSession;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Order;
@@ -27,7 +28,21 @@ class Terminal extends Component
      */
     public array $orderItems = [];
 
-    public ?int $activeCategoryId = null;
+    public string $kassaId = '1';
+
+    public bool $isLocked = true;
+
+    public ?string $cashierName = null;
+
+    public ?int $cashierSessionId = null;
+
+    public string $enteredPin = '';
+
+    public string $lockError = '';
+
+    public string $customCashierName = '';
+
+    public int|string|null $activeCategoryId = 'all';
 
     public bool $awaitingPayment = false;
 
@@ -49,6 +64,8 @@ class Terminal extends Component
 
     public ?string $scannedPoefName = null;
 
+    public ?string $scannedSharedPoefName = null;
+
     public ?string $scannedPoefInfoName = null;
 
     public ?int $scannedPoefInfoTotalSpent = null;
@@ -69,13 +86,139 @@ class Terminal extends Component
 
     public string $paymentError = '';
 
-    public function mount(): void
+    public function mount(mixed $kassa = null): void
     {
-        $this->activeCategoryId = $this->eventCategories()->first()?->id;
+        $this->kassaId = (string) ($kassa ?: request('kassa') ?: session('pos_kassa_id', config('kassa.default_kassa_id', '1')));
+        session(['pos_kassa_id' => $this->kassaId]);
+
+        $sessionCashier = session("pos_cashier_{$this->kassaId}");
+        $sessionId = session("pos_cashier_session_id_{$this->kassaId}");
+
+        if ($sessionCashier && $sessionId && CashierSession::where('id', $sessionId)->whereNull('logged_out_at')->exists()) {
+            $this->cashierName = $sessionCashier;
+            $this->cashierSessionId = (int) $sessionId;
+            $this->isLocked = false;
+        } elseif (app()->environment('testing') && ! config('kassa.enforce_pos_lock_in_tests', false)) {
+            $this->cashierName = 'Kassier Test';
+            $this->isLocked = false;
+        } else {
+            $this->isLocked = true;
+        }
+
+        $this->activeCategoryId = 'all';
         $this->broadcastCustomerDisplayState();
     }
 
-    public function setCategory(int $categoryId): void
+    public function appendLockPin(string $digit): void
+    {
+        if (strlen($this->enteredPin) < 8) {
+            $this->enteredPin .= $digit;
+        }
+        $this->lockError = '';
+        if (strlen($this->enteredPin) >= 4) {
+            $this->unlockWithPin();
+        }
+    }
+
+    public function clearLockPin(): void
+    {
+        $this->enteredPin = '';
+        $this->lockError = '';
+    }
+
+    public function unlockWithPin(): void
+    {
+        $validPin = (string) config('kassa.pos_pin', '1234');
+        $adminPin = (string) config('kassa.admin_pin', '1234');
+
+        if ($this->enteredPin === $validPin || $this->enteredPin === $adminPin) {
+            $name = trim($this->customCashierName) !== ''
+                ? trim($this->customCashierName)
+                : 'Kassier '.$this->kassaId;
+
+            $session = CashierSession::create([
+                'kassa_id' => $this->kassaId,
+                'cashier_name' => $name,
+                'auth_method' => 'pin',
+                'logged_in_at' => now(),
+            ]);
+
+            $this->cashierSessionId = $session->id;
+            $this->cashierName = $name;
+            session(["pos_cashier_{$this->kassaId}" => $name]);
+            session(["pos_cashier_session_id_{$this->kassaId}" => $session->id]);
+
+            $this->isLocked = false;
+            $this->enteredPin = '';
+            $this->lockError = '';
+            $this->dispatch('nfc-beep', success: true);
+        } else {
+            $this->lockError = 'Ongeldige PIN-code. Probeer opnieuw.';
+            $this->enteredPin = '';
+            $this->dispatch('nfc-beep', success: false);
+        }
+    }
+
+    public function unlockWithBadge(string $cardUid): void
+    {
+        $clean = trim($cardUid);
+        if ($clean === '') {
+            return;
+        }
+
+        $card = $this->findCard($clean);
+        $specificUser = null;
+        if ($card && $card->hangaar_user_id) {
+            $specificUser = Poef::where('hangaar_user_id', $card->hangaar_user_id)->first();
+        }
+
+        $name = $specificUser?->name
+            ?: ($card?->label ?: ($card?->poef?->name ?: 'Medewerker ('.substr($clean, -4).')'));
+        $hangaarId = $card?->hangaar_user_id ?: $card?->poef?->hangaar_user_id;
+
+        $session = CashierSession::create([
+            'kassa_id' => $this->kassaId,
+            'cashier_name' => $name,
+            'hangaar_user_id' => $hangaarId,
+            'card_uid' => $clean,
+            'auth_method' => 'badge',
+            'logged_in_at' => now(),
+        ]);
+
+        $this->cashierSessionId = $session->id;
+        $this->cashierName = $name;
+        session(["pos_cashier_{$this->kassaId}" => $name]);
+        session(["pos_cashier_session_id_{$this->kassaId}" => $session->id]);
+
+        $this->isLocked = false;
+        $this->enteredPin = '';
+        $this->lockError = '';
+        $this->dispatch('nfc-beep', success: true);
+    }
+
+    public function lockKassa(): void
+    {
+        if ($this->cashierSessionId) {
+            CashierSession::where('id', $this->cashierSessionId)->update([
+                'logged_out_at' => now(),
+            ]);
+        }
+
+        session()->forget([
+            "pos_cashier_{$this->kassaId}",
+            "pos_cashier_session_id_{$this->kassaId}",
+        ]);
+
+        $this->cashierName = null;
+        $this->cashierSessionId = null;
+        $this->isLocked = true;
+        $this->enteredPin = '';
+        $this->lockError = '';
+        $this->orderItems = [];
+        $this->broadcastCustomerDisplayState('idle');
+    }
+
+    public function setCategory(int|string $categoryId): void
     {
         $this->activeCategoryId = $categoryId;
     }
@@ -488,10 +631,11 @@ class Terminal extends Component
             }
         }
 
-        $device = (string) config('beheer.device_name', 'kassa-1');
+        $device = "kassa-{$this->kassaId}";
+        $cashier = $this->cashierName ?: 'Kassier '.$this->kassaId;
         $cardPaymentMethod = $this->cardPaymentMethod;
 
-        DB::transaction(function () use ($event, $cardItems, $drinkItems, $cardTotal, $drinksTotal, $drinksVakjes, $device, $cardPaymentMethod, $cardProductId): void {
+        DB::transaction(function () use ($event, $cardItems, $drinkItems, $cardTotal, $drinksTotal, $drinksVakjes, $device, $cashier, $cardPaymentMethod, $cardProductId): void {
             // 1. Order for the consumptiekaart purchase (paid with cash or qr)
             $cardOrder = Order::create([
                 'uuid' => (string) Str::uuid(),
@@ -500,6 +644,7 @@ class Terminal extends Component
                 'status' => 'paid',
                 'payment_method' => $cardPaymentMethod,
                 'device' => $device,
+                'cashier_name' => $cashier,
                 'vakjes' => null,
                 'beheer_status' => 'pending',
             ]);
@@ -520,6 +665,7 @@ class Terminal extends Component
                     'status' => 'paid',
                     'payment_method' => PaymentMode::Drankkaart->value,
                     'device' => $device,
+                    'cashier_name' => $cashier,
                     'vakjes' => $drinksVakjes,
                     'beheer_status' => 'pending',
                 ]);
@@ -577,6 +723,13 @@ class Terminal extends Component
         }
         $cardUid = trim((string) $cardUid);
         if ($cardUid === '') {
+            return;
+        }
+
+        // Als de kassa vergrendeld is, meld de medewerker aan via badge scan!
+        if ($this->isLocked) {
+            $this->unlockWithBadge($cardUid);
+
             return;
         }
 
@@ -709,7 +862,17 @@ class Terminal extends Component
             return;
         }
 
-        $this->scannedPoefName = $poef->poef_name ?: $poef->name;
+        // Specifieke Hangaar-gebruiker identificeren van wie de badge is (partner-eis)
+        $specificUser = null;
+        if ($card->hangaar_user_id) {
+            $specificUser = Poef::where('hangaar_user_id', $card->hangaar_user_id)->first();
+        }
+
+        $displayName = $specificUser?->name ?: $card->label ?: $poef->name;
+        $sharedPoefName = ($poef->poef_name && $poef->poef_name !== $displayName) ? $poef->poef_name : null;
+
+        $this->scannedPoefName = $displayName;
+        $this->scannedSharedPoefName = $sharedPoefName;
         $this->lastPaymentMethod = 'scanner';
         $this->lastCashChange = null;
 
@@ -745,7 +908,18 @@ class Terminal extends Component
 
         if ($card && $card->poef) {
             $poef = $card->poef;
-            $this->scannedPoefInfoName = $poef->poef_name ?: $poef->name;
+
+            // Specifieke Hangaar-gebruiker identificeren van wie de badge is
+            $specificUser = null;
+            if ($card->hangaar_user_id) {
+                $specificUser = Poef::where('hangaar_user_id', $card->hangaar_user_id)->first();
+            }
+
+            $displayName = $specificUser?->name ?: $card->label ?: $poef->name;
+            $sharedPoefName = ($poef->poef_name && $poef->poef_name !== $displayName) ? $poef->poef_name : null;
+
+            $this->scannedPoefInfoName = $displayName;
+            $this->scannedSharedPoefName = $sharedPoefName;
             $this->scannedPoefInfoTotalSpent = (int) Order::where('event_id', $event?->id)
                 ->where('poef_id', $poef->id)
                 ->sum('total_amount');
@@ -753,9 +927,10 @@ class Terminal extends Component
             $this->showPoefInfoModal = false;
 
             // Broadcast naar het klantenscherm (geen dubbele piep op idle saldo check)
-            $this->broadcastPoefInfoDisplay($this->scannedPoefInfoName, $this->scannedPoefInfoTotalSpent);
+            $this->broadcastPoefInfoDisplay($displayName, $this->scannedPoefInfoTotalSpent, null, $sharedPoefName);
         } else {
             $this->scannedPoefInfoName = null;
+            $this->scannedSharedPoefName = null;
             $this->scannedPoefInfoTotalSpent = null;
             $this->scannedPoefInfoError = 'Onbekende kaart: niet gekoppeld aan een poef.';
             $this->showPoefInfoModal = false;
@@ -769,15 +944,17 @@ class Terminal extends Component
     {
         $this->showPoefInfoModal = false;
         $this->scannedPoefInfoName = null;
+        $this->scannedSharedPoefName = null;
         $this->scannedPoefInfoTotalSpent = null;
         $this->scannedPoefInfoError = null;
         $this->broadcastCustomerDisplayState('idle');
     }
 
-    public function broadcastPoefInfoDisplay(?string $name, ?int $totalSpent, ?string $error = null): void
+    public function broadcastPoefInfoDisplay(?string $name, ?int $totalSpent, ?string $error = null, ?string $sharedName = null): void
     {
         $event = Event::active();
         $data = [
+            'kassa_id' => $this->kassaId,
             'state' => 'poef_info',
             'event_name' => $event?->name ?? 'Kassa',
             'vak_price' => $event?->vak_price ?? 100,
@@ -796,19 +973,24 @@ class Terminal extends Component
             'last_cash_change' => null,
             'last_drinks_vakjes' => null,
             'scanned_poef_name' => $name,
+            'scanned_shared_poef_name' => $sharedName,
             'poef_total_spent' => $totalSpent,
             'poef_info_error' => $error,
             'updated_at' => microtime(true),
         ];
 
-        Cache::put('pos_customer_display_state', $data, 3600);
-        $this->dispatch('pos-display-updated', state: $data);
+        Cache::put("pos_customer_display_state_{$this->kassaId}", $data, 3600);
+        if ($this->kassaId === '1') {
+            Cache::put('pos_customer_display_state', $data, 3600);
+        }
+        $this->dispatch('pos-display-updated', state: $data, kassaId: $this->kassaId);
     }
 
     public function closeSuccess(): void
     {
         $this->paymentSuccess = false;
         $this->scannedPoefName = null;
+        $this->scannedSharedPoefName = null;
         $this->lastPaymentMethod = null;
         $this->lastCashChange = null;
         $this->lastDrinksVakjes = null;
@@ -898,6 +1080,7 @@ class Terminal extends Component
                 : (! empty($this->orderItems) ? 'cart' : 'idle')));
 
         $data = [
+            'kassa_id' => $this->kassaId,
             'state' => $state,
             'event_name' => $event?->name ?? 'Kassa',
             'vak_price' => $event?->vak_price ?? 100,
@@ -931,12 +1114,16 @@ class Terminal extends Component
             'last_cash_change' => $this->lastCashChange,
             'last_drinks_vakjes' => $this->lastDrinksVakjes,
             'scanned_poef_name' => $this->scannedPoefName,
+            'scanned_shared_poef_name' => $this->scannedSharedPoefName,
             'poef_total_spent' => $this->lastPoefTotalSpent,
             'updated_at' => microtime(true),
         ];
 
-        Cache::put('pos_customer_display_state', $data, 3600);
-        $this->dispatch('pos-display-updated', state: $data);
+        Cache::put("pos_customer_display_state_{$this->kassaId}", $data, 3600);
+        if ($this->kassaId === '1') {
+            Cache::put('pos_customer_display_state', $data, 3600);
+        }
+        $this->dispatch('pos-display-updated', state: $data, kassaId: $this->kassaId);
     }
 
     private function storeOrder(Event $event, PaymentMode|string $method, ?string $cardUid = null, ?int $vakjes = null, ?int $poefId = null, ?int $cardId = null, ?int $customTotal = null, ?string $cardHash = null): void
@@ -945,12 +1132,13 @@ class Terminal extends Component
         $methodValue = $method instanceof PaymentMode ? $method->value : (string) $method;
         $orderUuid = (string) Str::uuid();
         $cardHashValue = $cardHash ?? ($cardUid ? BeheerApiService::hashCardUid($cardUid) : null);
-        $device = (string) config('beheer.device_name', 'kassa-1');
+        $device = "kassa-{$this->kassaId}";
+        $cashier = $this->cashierName ?: 'Kassier '.$this->kassaId;
         $cardProductId = $this->resolvePunchCardProductId($event);
 
         $createdOrder = null;
 
-        DB::transaction(function () use ($event, $methodValue, $cardUid, $cardHashValue, $orderUuid, $device, $vakjes, $total, $poefId, $cardId, $cardProductId, &$createdOrder): void {
+        DB::transaction(function () use ($event, $methodValue, $cardUid, $cardHashValue, $orderUuid, $device, $cashier, $vakjes, $total, $poefId, $cardId, $cardProductId, &$createdOrder): void {
             $createdOrder = Order::create([
                 'uuid' => $orderUuid,
                 'event_id' => $event->id,
@@ -962,6 +1150,7 @@ class Terminal extends Component
                 'card_uid' => $cardUid,
                 'card_hash' => $cardHashValue,
                 'device' => $device,
+                'cashier_name' => $cashier,
                 'vakjes' => $vakjes,
                 'beheer_status' => 'pending',
             ]);
@@ -1156,21 +1345,25 @@ class Terminal extends Component
         $products = collect();
         $categories = $this->eventCategories();
 
-        if (! $categories->contains('id', $this->activeCategoryId)) {
-            $this->activeCategoryId = $categories->first()?->id;
+        if ($this->activeCategoryId !== 'all' && ! $categories->contains('id', $this->activeCategoryId)) {
+            $this->activeCategoryId = 'all';
         }
 
         if ($event) {
             $sold = $event->soldQuantities();
             $inCart = collect($this->orderItems)->pluck('quantity', 'product_id');
 
-            $products = $event->products()
-                ->where('products.category_id', $this->activeCategoryId)
+            $query = $event->products()
                 ->where(function ($query): void {
                     $query->whereNull('products.kind')
                         ->orWhere('products.kind', '!=', 'punch_card');
-                })
-                ->orderBy('products.sort')
+                });
+
+            if ($this->activeCategoryId !== 'all' && $this->activeCategoryId !== null) {
+                $query->where('products.category_id', $this->activeCategoryId);
+            }
+
+            $products = $query->orderBy('products.sort')
                 ->orderBy('products.name')
                 ->get()
                 ->each(function ($product) use ($sold, $inCart): void {

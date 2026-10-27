@@ -84,9 +84,10 @@
                     <span class="text-slate-400 font-medium bg-slate-800 px-4 py-2 rounded-full border border-slate-700">
                         {{ now()->format('H:i') }}
                     </span>
-                    <div class="w-10 h-10 rounded-full bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-indigo-300 font-bold">
-                        A
-                    </div>
+                    <a href="{{ route('admin.lock') }}" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-red-950/60 border border-slate-700 hover:border-red-500/50 text-slate-300 hover:text-red-300 text-sm font-semibold transition-all" title="Beheer Vergrendelen">
+                        <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <span>Vergrendelen</span>
+                    </a>
                 </div>
             </header>
 

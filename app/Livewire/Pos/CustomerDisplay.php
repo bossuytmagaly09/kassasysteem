@@ -10,6 +10,8 @@ use Livewire\Component;
 #[Title('Klantenscherm')]
 class CustomerDisplay extends Component
 {
+    public string $kassaId = '1';
+
     public string $state = 'idle'; // idle | cart | awaiting_payment | success
 
     public string $eventName = '';
@@ -44,6 +46,8 @@ class CustomerDisplay extends Component
 
     public ?string $scannedPoefName = null;
 
+    public ?string $scannedSharedPoefName = null;
+
     public ?int $poefTotalSpent = null;
 
     public ?string $poefInfoError = null;
@@ -52,8 +56,9 @@ class CustomerDisplay extends Component
 
     public float $stateTimestamp = 0.0;
 
-    public function mount(): void
+    public function mount(mixed $kassa = null): void
     {
+        $this->kassaId = (string) ($kassa ?: request('kassa') ?: '1');
         $this->loadFromCache();
     }
 
@@ -64,7 +69,12 @@ class CustomerDisplay extends Component
 
     protected function loadFromCache(): void
     {
-        $cached = Cache::get('pos_customer_display_state');
+        $cacheKey = "pos_customer_display_state_{$this->kassaId}";
+        $cached = Cache::get($cacheKey);
+
+        if (! is_array($cached) && $this->kassaId === '1') {
+            $cached = Cache::get('pos_customer_display_state');
+        }
 
         if (! is_array($cached)) {
             $event = Event::active();
@@ -92,6 +102,8 @@ class CustomerDisplay extends Component
             $this->total = 0;
             $this->vakjes = 0;
             $this->awaitingPayment = false;
+            $this->scannedPoefName = null;
+            $this->scannedSharedPoefName = null;
 
             return;
         }
@@ -100,6 +112,7 @@ class CustomerDisplay extends Component
         if (($cached['state'] ?? '') === 'poef_info' && ($now - $updatedAt) > 7.0) {
             $this->state = 'idle';
             $this->scannedPoefName = null;
+            $this->scannedSharedPoefName = null;
             $this->poefTotalSpent = null;
             $this->poefInfoError = null;
 
@@ -123,6 +136,7 @@ class CustomerDisplay extends Component
         $this->lastCashChange = isset($cached['last_cash_change']) ? (int) $cached['last_cash_change'] : null;
         $this->lastDrinksVakjes = isset($cached['last_drinks_vakjes']) ? (int) $cached['last_drinks_vakjes'] : null;
         $this->scannedPoefName = $cached['scanned_poef_name'] ?? null;
+        $this->scannedSharedPoefName = $cached['scanned_shared_poef_name'] ?? null;
         $this->poefTotalSpent = isset($cached['poef_total_spent']) ? (int) $cached['poef_total_spent'] : null;
         $this->poefInfoError = $cached['poef_info_error'] ?? null;
         $this->stateTimestamp = $updatedAt;

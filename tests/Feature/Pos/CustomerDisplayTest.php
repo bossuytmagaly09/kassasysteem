@@ -119,15 +119,16 @@ class CustomerDisplayTest extends TestCase
             ->call('startPayment')
             ->call('handleScan', '04A23B19')
             ->assertSet('paymentSuccess', true)
-            ->assertSet('scannedPoefName', 'Jonathan / Febe')
+            ->assertSet('scannedPoefName', 'Jonathan')
             ->assertSet('lastPoefTotalSpent', 1500); // 1000 + 500 = 1500 cents (€ 15.00)
 
         // Customer display should display the success state and current total spent tonight
         Livewire::test(CustomerDisplay::class)
             ->assertSet('state', 'success')
-            ->assertSet('scannedPoefName', 'Jonathan / Febe')
+            ->assertSet('scannedPoefName', 'Jonathan')
             ->assertSet('poefTotalSpent', 1500)
             ->assertSee('Bedankt voor uw bestelling!')
+            ->assertSee('Jonathan')
             ->assertSee('Jonathan / Febe')
             ->assertSee('Huidig saldo / Totaal uitgegeven vanavond:')
             ->assertSee('€ 15,00');
@@ -153,7 +154,8 @@ class CustomerDisplayTest extends TestCase
         // 2. Customer display should show poef_info state
         Livewire::test(CustomerDisplay::class)
             ->assertSet('state', 'poef_info')
-            ->assertSet('scannedPoefName', 'Jonathan / Febe')
+            ->assertSet('scannedPoefName', 'Jonathan')
+            ->assertSee('Jonathan')
             ->assertSee('Jonathan / Febe')
             ->assertSee('Huidig saldo / Totaal uitgegeven vanavond:');
     }

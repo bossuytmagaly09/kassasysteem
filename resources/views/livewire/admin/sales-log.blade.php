@@ -123,6 +123,16 @@
                 {{ $orders->total() }}
             </span>
         </button>
+
+        <button type="button"
+                wire:click="setTab('cashiers')"
+                class="px-6 py-3 rounded-2xl font-bold text-base transition-all flex items-center gap-2 border {{ $activeTab === 'cashiers' ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-600/30' : 'bg-slate-800/60 text-slate-300 border-slate-700/60 hover:bg-slate-700' }}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            <span>Kassier Logins & Sessies</span>
+            <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ $activeTab === 'cashiers' ? 'bg-indigo-900/80 text-indigo-200' : 'bg-slate-700 text-slate-400' }}">
+                {{ count($cashierSessions) }}
+            </span>
+        </button>
     </div>
 
     <!-- TAB 1: Product Sales Overview -->
@@ -209,6 +219,7 @@
                     <thead class="bg-slate-900/60 text-xs uppercase font-bold text-slate-400 border-b border-slate-700/50">
                         <tr>
                             <th class="px-6 py-4">Tijdstip</th>
+                            <th class="px-6 py-4">Kassa / Kassier</th>
                             <th class="px-6 py-4">Event</th>
                             <th class="px-6 py-4">Betaalmethode</th>
                             <th class="px-6 py-4">Klant / Poef</th>
@@ -223,6 +234,13 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-mono">
                                     <div class="font-bold text-slate-200">{{ $order->created_at?->format('d/m/Y') }}</div>
                                     <div>{{ $order->created_at?->format('H:i:s') }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs">
+                                    <div class="font-bold text-slate-200 flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                                        {{ ucfirst($order->device ?: 'Kassa 1') }}
+                                    </div>
+                                    <div class="text-slate-400 font-medium">{{ $order->cashier_name ?: 'Onbekend' }}</div>
                                 </td>
                                 <td class="px-6 py-4 font-semibold text-slate-300 whitespace-nowrap">
                                     {{ $order->event?->name ?? 'Onbekend' }}
@@ -285,7 +303,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                                <td colspan="8" class="px-6 py-12 text-center text-slate-500">
                                     Geen bestellingen gevonden voor de geselecteerde filters.
                                 </td>
                             </tr>
@@ -299,6 +317,96 @@
                     {{ $orders->links() }}
                 </div>
             @endif
+        </div>
+    @endif
+
+    <!-- TAB 3: Cashier Sessions & Logins -->
+    @if($activeTab === 'cashiers')
+        <div class="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-xl overflow-hidden">
+            <div class="p-6 border-b border-slate-700/50 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-100">Kassier Aanwezigheid & Sessielog</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Overzicht van wie op welk moment aan welke kassa stond ingelogd.</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-900/60 text-xs uppercase font-bold text-slate-400 border-b border-slate-700/50">
+                        <tr>
+                            <th class="px-6 py-4">Kassa</th>
+                            <th class="px-6 py-4">Kassier</th>
+                            <th class="px-6 py-4">Inlogmethode</th>
+                            <th class="px-6 py-4">Ingelogd op</th>
+                            <th class="px-6 py-4">Uitgelogd op</th>
+                            <th class="px-6 py-4">Duur</th>
+                            <th class="px-6 py-4 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/40">
+                        @forelse($cashierSessions as $sess)
+                            <tr class="hover:bg-slate-800/60 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap font-bold text-slate-200">
+                                    <span class="px-3 py-1 rounded-xl bg-slate-900 border border-slate-700 text-xs text-indigo-300">
+                                        Kassa {{ $sess->kassa_id }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap font-bold text-white text-base">
+                                    {{ $sess->cashier_name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs">
+                                    @if($sess->auth_method === 'badge' || $sess->auth_method === 'scanner')
+                                        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold">
+                                            🏷️ Badge Scan
+                                        </span>
+                                    @else
+                                        <span class="px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-semibold">
+                                            🔢 PIN Code
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-mono">
+                                    <div class="font-bold text-slate-200">{{ $sess->logged_in_at?->format('d/m/Y') }}</div>
+                                    <div>{{ $sess->logged_in_at?->format('H:i:s') }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-mono">
+                                    @if($sess->logged_out_at)
+                                        <div class="font-bold text-slate-200">{{ $sess->logged_out_at->format('d/m/Y') }}</div>
+                                        <div>{{ $sess->logged_out_at->format('H:i:s') }}</div>
+                                    @else
+                                        <span class="text-emerald-400 font-bold italic">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-300 font-mono">
+                                    @if($sess->logged_out_at)
+                                        {{ $sess->logged_in_at?->diffForHumans($sess->logged_out_at, true) }}
+                                    @else
+                                        {{ $sess->logged_in_at?->diffForHumans(now(), true) }}
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 text-center whitespace-nowrap">
+                                    @if(! $sess->logged_out_at)
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                            Actief
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                                            Afgemeld
+                                        </span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                                    Nog geen kassier inlogsessies geregistreerd.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     @endif
 </div>

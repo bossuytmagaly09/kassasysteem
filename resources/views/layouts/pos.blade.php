@@ -224,11 +224,30 @@
             }
         });
 
-        // Broadcast cart and display state to 2nd screen (customer display)
+        // Broadcast cart and display state to 2nd screen (customer display) per isolated kassa
         if (window.BroadcastChannel) {
-            const displayChannel = new BroadcastChannel('kassa_display_channel');
             window.addEventListener('pos-display-updated', (event) => {
-                displayChannel.postMessage(event.detail || {});
+                const detail = event.detail || {};
+                const kassaId = String(detail.kassaId || '1');
+                const stateData = detail.state !== undefined ? detail.state : detail;
+                
+                try {
+                    const kassaChannel = new BroadcastChannel('kassa_display_channel_' + kassaId);
+                    kassaChannel.postMessage(stateData);
+                    setTimeout(() => kassaChannel.close(), 500);
+                } catch (e) {
+                    console.error('Error posting to kassa display channel:', e);
+                }
+
+                if (kassaId === '1') {
+                    try {
+                        const legacyChannel = new BroadcastChannel('kassa_display_channel');
+                        legacyChannel.postMessage(stateData);
+                        setTimeout(() => legacyChannel.close(), 500);
+                    } catch (e) {
+                        // ignore
+                    }
+                }
             });
         }
         </script>

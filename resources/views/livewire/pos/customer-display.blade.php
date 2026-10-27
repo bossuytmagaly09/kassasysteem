@@ -3,12 +3,20 @@
      x-data="{
          init() {
              if (window.BroadcastChannel) {
-                 const channel = new BroadcastChannel('kassa_display_channel');
+                 const channel = new BroadcastChannel('kassa_display_channel_' + @js($kassaId));
                  channel.onmessage = (event) => {
                      if (event.data) {
                          $wire.syncState();
                      }
                  };
+                 if (@js($kassaId) === '1') {
+                     const legacyChannel = new BroadcastChannel('kassa_display_channel');
+                     legacyChannel.onmessage = (event) => {
+                         if (event.data) {
+                             $wire.syncState();
+                         }
+                     };
+                 }
              }
          }
      }">
@@ -32,7 +40,9 @@
             <div class="min-w-0">
                 <div class="flex items-center gap-1.5 mb-1">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300 block leading-none">Kassa Klantenscherm</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300 block leading-none">
+                        Kassa Klantenscherm @if($kassaId !== '1') • Kassa {{ $kassaId }} @endif
+                    </span>
                 </div>
                 <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight truncate capitalize">{{ $eventName ?: 'Kassasysteem' }}</h1>
             </div>
@@ -198,7 +208,10 @@
                     <div class="w-full max-w-md p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border-2 border-indigo-500/50 mb-2">
                         @if($scannedPoefName)
                             <span class="text-xs text-indigo-300 font-bold uppercase tracking-wider block mb-0.5">Geboekt op poef van:</span>
-                            <h3 class="text-xl sm:text-2xl font-black text-white mb-2">{{ $scannedPoefName }}</h3>
+                            <h3 class="text-xl sm:text-2xl font-black text-white mb-0.5">{{ $scannedPoefName }}</h3>
+                            @if(!empty($scannedSharedPoefName) && $scannedSharedPoefName !== $scannedPoefName)
+                                <span class="text-xs text-indigo-300/80 font-medium block mb-2">(Gedeelde poef: {{ $scannedSharedPoefName }})</span>
+                            @endif
                         @endif
                         <div class="pt-2 border-t border-indigo-500/30">
                             <span class="text-xs font-semibold uppercase tracking-wider text-slate-300 block mb-0.5">Huidig saldo / Totaal uitgegeven vanavond:</span>
@@ -239,6 +252,9 @@
                     </div>
 
                     <h2 class="text-2xl sm:text-3xl font-black text-white mb-0.5">Hallo, {{ $scannedPoefName }}!</h2>
+                    @if(!empty($scannedSharedPoefName) && $scannedSharedPoefName !== $scannedPoefName)
+                        <div class="text-xs text-indigo-300 font-semibold mb-1">Poef: {{ $scannedSharedPoefName }}</div>
+                    @endif
                     <p class="text-xs text-slate-400 mb-2 sm:mb-3">Uw kaart is herkend op de kassa.</p>
 
                     <div class="w-full max-w-md p-4 rounded-2xl bg-slate-900/90 border-2 border-emerald-500/60 shadow-lg text-center mb-2">

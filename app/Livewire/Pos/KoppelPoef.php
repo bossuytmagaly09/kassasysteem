@@ -321,6 +321,75 @@ class KoppelPoef extends Component
     }
 
     /**
+     * Pull all poef connections, members, and cards from Beheer (API and external database).
+     */
+    public function pullFromBeheer(): void
+    {
+        $this->isSyncing = true;
+        $this->errorMessage = null;
+        $this->message = null;
+
+        try {
+            $apiSuccess = false;
+            $dbSuccess = false;
+
+            // 1. Ophalen via Beheer REST API (indien token ingesteld)
+            if (! empty(config('beheer.api_token'))) {
+                try {
+                    $api = app(BeheerApiService::class);
+                    $api->syncSnapshot();
+                    $apiSuccess = true;
+                } catch (\Throwable) {
+                    // API error
+                }
+            }
+
+            // 2. Ophalen via externe beheerdatabase indien geconfigureerd
+            if ($this->isExternalDbAvailable()) {
+                $this->ensureExternalCardsTable();
+                $this->syncUsersFromExternal();
+
+                if (Schema::connection('external')->hasTable('cards')) {
+                    $externalCards = DB::connection('external')->table('cards')->get();
+                    foreach ($externalCards as $extCard) {
+                        $poef = Poef::where('external_id', $extCard->user_id)
+                            ->orWhere('hangaar_user_id', $extCard->user_id)
+                            ->first();
+
+                        if ($poef) {
+                            $hash = BeheerApiService::hashCardUid($extCard->uid);
+                            Card::updateOrCreate(
+                                ['uid' => $extCard->uid],
+                                [
+                                    'poef_id' => $poef->id,
+                                    'card_hash' => $hash,
+                                    'hangaar_user_id' => $poef->hangaar_user_id ?? $poef->external_id,
+                                    'card_type' => $extCard->card_type ?? 'badge',
+                                    'label' => $extCard->label,
+                                    'status' => 'active',
+                                ]
+                            );
+                        }
+                    }
+                }
+                $dbSuccess = true;
+            }
+
+            if ($apiSuccess || $dbSuccess) {
+                $totalLeden = Poef::count();
+                $totalKaarten = Card::whereNotNull('poef_id')->where('status', 'active')->count();
+                $this->message = "Succesvol opgehaald vanuit Beheer! {$totalLeden} leden en {$totalKaarten} gekoppelde kaarten/badges zijn nu up-to-date.";
+            } else {
+                $this->message = 'Geen online verbinding met Beheer gevonden (controleer .env BEHEER_API_TOKEN of DB_EXTERNAL_PASSWORD). Lokale gegevens zijn behouden.';
+            }
+        } catch (\Throwable $e) {
+            $this->errorMessage = 'Fout bij ophalen uit Beheer: '.$e->getMessage();
+        } finally {
+            $this->isSyncing = false;
+        }
+    }
+
+    /**
      * Push all local card links to Beheer / drankdb and pull any new cards/users.
      */
     public function pushAndSync(): void

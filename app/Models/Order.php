@@ -20,6 +20,7 @@ class Order extends Model
         'card_uid',
         'card_hash',
         'device',
+        'cashier_name',
         'vakjes',
         'beheer_status',
         'beheer_sale_id',
