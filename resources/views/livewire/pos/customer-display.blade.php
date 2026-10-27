@@ -16,20 +16,25 @@
     <!-- Top Header Bar (Un-squished crisp logo, Event name, clock & vakwaarde pills) -->
     <header class="flex items-center justify-between pb-3 border-b border-slate-800/80 gap-3 shrink-0">
         <div class="flex items-center gap-3 min-w-0">
-            <!-- Sleek, perfectly proportioned logo badge (Point 4: no squishing) -->
-            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-500 p-0.5 shadow-xl shadow-indigo-500/25 flex items-center justify-center shrink-0">
-                <div class="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center p-2.5">
-                    <svg class="w-6 h-6 sm:w-7 sm:h-7 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                    </svg>
-                </div>
+            <!-- Professioneel, modern kassa logo icoon (zonder zwarte randen of vervorming) -->
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-2.5 shadow-lg shadow-indigo-500/25 border border-indigo-400/40 flex items-center justify-center shrink-0 text-white overflow-hidden">
+                <svg class="w-full h-full drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="11" rx="2" fill="currentColor" fill-opacity="0.2" />
+                    <line x1="7" y1="7" x2="11" y2="7" />
+                    <line x1="7" y1="10" x2="9" y2="10" />
+                    <line x1="15" y1="7" x2="17" y2="7" />
+                    <line x1="15" y1="10" x2="17" y2="10" />
+                    <line x1="12" y1="14" x2="12" y2="17" />
+                    <path d="M4 17h16a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-1a2 2 0 0 1 2-2z" fill="currentColor" fill-opacity="0.25" />
+                    <circle cx="12" cy="19.5" r="0.75" fill="currentColor" />
+                </svg>
             </div>
             <div class="min-w-0">
-                <div class="flex items-center gap-1.5 mb-0.5">
+                <div class="flex items-center gap-1.5 mb-1">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-400 block leading-none">Kassa Klantenscherm</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300 block leading-none">Kassa Klantenscherm</span>
                 </div>
-                <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight truncate">{{ $eventName ?: 'Kassasysteem' }}</h1>
+                <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight truncate capitalize">{{ $eventName ?: 'Kassasysteem' }}</h1>
             </div>
         </div>
 

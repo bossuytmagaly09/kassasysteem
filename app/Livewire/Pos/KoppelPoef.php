@@ -64,6 +64,21 @@ class KoppelPoef extends Component
         $this->errorMessage = null;
     }
 
+    public function updatedCardUid(?string $value): void
+    {
+        $this->message = null;
+        $this->errorMessage = null;
+
+        if (! empty($value)) {
+            $existing = $this->findExistingLinkedCard($value);
+            if ($existing) {
+                $typeLabel = $this->cardTypeLabel($existing['card_type'] ?? 'kaart');
+                $this->errorMessage = "Fout / Kaart Reeds Gekoppeld: Deze {$typeLabel} ({$value}) is reeds gekoppeld aan {$existing['owner_name']}! Overschrijven naar een ander lid is niet toegestaan.";
+                $this->dispatch('nfc-beep', success: false);
+            }
+        }
+    }
+
     #[On('card-scanned')]
     public function handleCardScanned(mixed $cardUid = null): void
     {
@@ -87,9 +102,123 @@ class KoppelPoef extends Component
         }
 
         $this->cardUid = $stripped !== '' ? $stripped : $clean;
+
+        // Security check direct bij scannen: als kaart AL gekoppeld is, GEEN groen licht maar direct een foutcode!
+        $existing = $this->findExistingLinkedCard($this->cardUid);
+        if ($existing) {
+            $typeLabel = $this->cardTypeLabel($existing['card_type'] ?? 'kaart');
+            $this->errorMessage = "Fout / Kaart Reeds Gekoppeld: Deze {$typeLabel} ({$this->cardUid}) is reeds gekoppeld aan {$existing['owner_name']}! Overschrijven naar een ander lid is niet toegestaan.";
+            $this->message = null;
+            $this->dispatch('nfc-beep', success: false);
+
+            return;
+        }
+
         $this->message = "Scancode ontvangen: {$this->cardUid}. Kies een lid en type om te koppelen.";
         $this->errorMessage = null;
         $this->dispatch('nfc-beep', success: true);
+    }
+
+    /**
+     * Zoek of een UID/kaart al gekoppeld is in de lokale database of externe drankdb.
+     *
+     * @return array{id: ?int, poef_id: ?int, owner_name: string, card_type: string, uid: string}|null
+     */
+    public function findExistingLinkedCard(?string $rawUid): ?array
+    {
+        if (! $rawUid) {
+            return null;
+        }
+
+        $raw = trim($rawUid);
+        if ($raw === '') {
+            return null;
+        }
+
+        $clean = (string) preg_replace('/^(?:card\s*uid|uid|card|tag|nfc|id)\s*[:=\-]\s*/i', '', $raw);
+        $clean = trim($clean);
+
+        $candidates = array_unique(array_filter([
+            $raw,
+            strtoupper($raw),
+            strtolower($raw),
+            $clean,
+            strtoupper($clean),
+            strtolower($clean),
+        ]));
+
+        $hexOnly = strtoupper((string) preg_replace('/[\s:\-]/', '', $clean));
+        if ($hexOnly !== '' && ctype_xdigit($hexOnly)) {
+            $candidates[] = $hexOnly;
+            $candidates[] = strtolower($hexOnly);
+        }
+
+        $hashes = [];
+        foreach (array_unique($candidates) as $cand) {
+            $hash = BeheerApiService::hashCardUid($cand);
+            if ($hash && ! in_array($hash, $hashes, true)) {
+                $hashes[] = $hash;
+            }
+        }
+
+        // 1. Controleer lokale database (Card gekoppeld aan Poef)
+        $card = Card::with('poef')
+            ->where(function ($query) use ($candidates, $hashes): void {
+                $query->whereIn('uid', $candidates);
+                if (! empty($hashes)) {
+                    $query->orWhereIn('card_hash', $hashes);
+                }
+            })
+            ->where('status', 'active')
+            ->whereNotNull('poef_id')
+            ->first();
+
+        if ($card) {
+            $ownerName = $card->poef?->poef_name ?: $card->poef?->name ?: 'Onbekend lid';
+
+            return [
+                'id' => $card->id,
+                'poef_id' => $card->poef_id,
+                'owner_name' => $ownerName,
+                'card_type' => $card->card_type,
+                'uid' => $card->uid,
+            ];
+        }
+
+        // 2. Controleer externe database indien bereikbaar
+        if ($this->isExternalDbAvailable()) {
+            try {
+                $extCard = DB::connection('external')->table('cards')
+                    ->whereIn('uid', $candidates)
+                    ->whereNotNull('user_id')
+                    ->first();
+
+                if ($extCard && $extCard->user_id) {
+                    $localPoef = Poef::where('external_id', $extCard->user_id)
+                        ->orWhere('hangaar_user_id', $extCard->user_id)
+                        ->first();
+                    $ownerName = $localPoef?->name;
+
+                    if (! $ownerName) {
+                        $extUser = DB::connection('external')->table('users')
+                            ->where('id', $extCard->user_id)
+                            ->first();
+                        $ownerName = $extUser ? trim(($extUser->first_name ?? '').' '.($extUser->last_name ?? '')) : 'Lid #'.$extCard->user_id;
+                    }
+
+                    return [
+                        'id' => null,
+                        'poef_id' => $localPoef?->id,
+                        'owner_name' => $ownerName ?: 'Lid #'.$extCard->user_id,
+                        'card_type' => $extCard->card_type ?? 'kaart',
+                        'uid' => $extCard->uid,
+                    ];
+                }
+            } catch (\Throwable) {
+            }
+        }
+
+        return null;
     }
 
     public function linkCard(): void
@@ -124,27 +253,17 @@ class KoppelPoef extends Component
             return;
         }
 
-        $cardHash = BeheerApiService::hashCardUid($cleanUid);
-
-        // Security check: kaart mag NIET overschreven worden als deze al aan een ander lid gekoppeld is!
-        $existingCard = Card::with('poef')
-            ->where(function ($q) use ($cleanUid, $cardHash): void {
-                $q->where('uid', $cleanUid);
-                if ($cardHash) {
-                    $q->orWhere('card_hash', $cardHash);
-                }
-            })
-            ->where('status', 'active')
-            ->whereNotNull('poef_id')
-            ->first();
-
-        if ($existingCard && $existingCard->poef_id !== $poef->id) {
-            $ownerName = $existingCard->poef?->poef_name ?: $existingCard->poef?->name ?: 'een ander lid';
-            $this->errorMessage = "Beveiliging: Deze {$this->cardTypeLabel($existingCard->card_type ?? $this->cardType)} ({$cleanUid}) is reeds gekoppeld aan {$ownerName}. Overschrijven naar een ander lid is niet toegestaan! Verwijder de kaart eerst in het overzicht alvorens opnieuw toe te wijzen.";
+        // Security check: kaart mag NIET overschreven worden als deze al aan een lid gekoppeld is!
+        $existing = $this->findExistingLinkedCard($cleanUid);
+        if ($existing && $existing['poef_id'] !== $poef->id) {
+            $typeLabel = $this->cardTypeLabel($existing['card_type'] ?? $this->cardType);
+            $this->errorMessage = "Beveiliging: Deze {$typeLabel} ({$cleanUid}) is reeds gekoppeld aan {$existing['owner_name']}. Overschrijven naar een ander lid is niet toegestaan! Verwijder de kaart eerst in het overzicht alvorens opnieuw toe te wijzen.";
             $this->dispatch('nfc-beep', success: false);
 
             return;
         }
+
+        $cardHash = BeheerApiService::hashCardUid($cleanUid);
 
         // Link card in local database
         $card = Card::updateOrCreate(

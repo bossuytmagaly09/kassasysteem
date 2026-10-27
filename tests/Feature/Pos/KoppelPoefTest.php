@@ -128,9 +128,8 @@ class KoppelPoefTest extends TestCase
             ->dispatch('open-koppel-poef')
             ->call('selectPoef', $this->poef2->id)
             ->set('cardUid', 'SECURE-BADGE-007')
-            ->set('cardType', 'nfc')
+            ->set('cardType', 'nfc_kaart')
             ->call('linkCard')
-            ->assertSee('Beveiliging: Deze')
             ->assertSee('Charlotte Van Houtte')
             ->assertSee('Overschrijven naar een ander lid is niet toegestaan')
             ->assertDispatched('nfc-beep', success: false);
@@ -144,6 +143,25 @@ class KoppelPoefTest extends TestCase
             'uid' => 'SECURE-BADGE-007',
             'poef_id' => $this->poef2->id,
         ]);
+    }
+
+    public function test_scanning_already_linked_card_displays_error_code_and_no_green_light(): void
+    {
+        Card::create([
+            'poef_id' => $this->poef1->id,
+            'uid' => '04017142B91291',
+            'card_type' => 'nfc_kaart',
+            'status' => 'active',
+        ]);
+
+        Livewire::test(KoppelPoef::class)
+            ->dispatch('open-koppel-poef')
+            ->dispatch('card-scanned', cardUid: '04017142B91291')
+            ->assertSet('message', null)
+            ->assertDontSee('Scancode ontvangen: 04017142B91291. Kies een lid')
+            ->assertSee('Fout / Kaart Reeds Gekoppeld')
+            ->assertSee('Charlotte Van Houtte')
+            ->assertDispatched('nfc-beep', success: false);
     }
 
     public function test_card_can_be_unlinked(): void

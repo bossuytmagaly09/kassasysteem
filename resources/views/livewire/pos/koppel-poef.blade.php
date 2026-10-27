@@ -141,17 +141,25 @@
                                 <!-- UID / Serienummer -->
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-400 mb-1">Serienummer / UID:</label>
+                                    @php $existingLinked = $this->findExistingLinkedCard($cardUid); @endphp
                                     <div class="relative">
                                         <input type="text"
-                                               wire:model="cardUid"
+                                               wire:model.live.debounce.300ms="cardUid"
                                                placeholder="Scan tegen scanner of typ UID..."
-                                               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 font-mono placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                                               class="w-full bg-slate-900 border {{ $existingLinked ? 'border-red-500 text-red-200' : 'border-slate-700 text-slate-200' }} rounded-xl px-4 py-2.5 text-sm font-mono placeholder-slate-500 focus:outline-none focus:border-indigo-500">
                                         <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs flex items-center gap-1">
                                             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                                             <span>Scanner actief</span>
                                         </div>
                                     </div>
-                                    <p class="text-[11px] text-slate-500 mt-1">Houd badge, bankkaart of tag tegen de scanner; het nummer verschijnt vanzelf.</p>
+                                    @if($existingLinked)
+                                        <div class="mt-2 p-2.5 rounded-xl bg-red-950/70 border border-red-500/50 text-red-300 text-xs font-semibold flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                            <span>Reeds gekoppeld aan: <strong class="text-white">{{ $existingLinked['owner_name'] }}</strong> (Geblokkeerd)</span>
+                                        </div>
+                                    @else
+                                        <p class="text-[11px] text-slate-500 mt-1">Houd badge, bankkaart of tag tegen de scanner; het nummer verschijnt vanzelf.</p>
+                                    @endif
                                 </div>
 
                                 <!-- Type Medium: Bankkaart, Badge of NFC Kaart -->
@@ -177,9 +185,15 @@
                                 <!-- Actieknop -->
                                 <button type="button"
                                         wire:click="linkCard"
-                                        class="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                                    <span>Koppelen & Opslaan</span>
+                                        @disabled(! $selectedPoefId || empty($cardUid) || $existingLinked !== null)
+                                        class="w-full py-3 {{ $existingLinked ? 'bg-red-950/60 border border-red-500/50 text-red-300 cursor-not-allowed opacity-60' : 'bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-lg shadow-indigo-600/30' }} font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                                    @if($existingLinked)
+                                        <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                                        <span>Kaart al gekoppeld aan {{ $existingLinked['owner_name'] }}</span>
+                                    @else
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                                        <span>Koppelen & Opslaan</span>
+                                    @endif
                                 </button>
                             </div>
                         </div>
