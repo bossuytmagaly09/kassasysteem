@@ -9,6 +9,12 @@ export default {
         './resources/views/**/*.blade.php',
     ],
 
+    safelist: [
+        'grid-cols-5',
+        'lg:grid-cols-5',
+        'xl:grid-cols-5',
+    ],
+
     theme: {
         extend: {
             fontFamily: {
