@@ -104,7 +104,9 @@ class Terminal extends Component
         }
 
         $this->activeCategoryId = 'all';
-        $this->broadcastCustomerDisplayState();
+        $this->orderItems = [];
+        $this->awaitingPayment = false;
+        self::resetCustomerDisplay($this->kassaId);
     }
 
     public function appendLockPin(string $digit): void
@@ -178,6 +180,9 @@ class Terminal extends Component
 
     public function switchKassa(string $newKassaId): mixed
     {
+        $this->orderItems = [];
+        $this->awaitingPayment = false;
+        self::resetCustomerDisplay($this->kassaId);
         session(['pos_kassa_id' => $newKassaId]);
 
         return redirect()->route('pos.index', ['kassa' => $newKassaId]);
@@ -239,7 +244,8 @@ class Terminal extends Component
         $this->enteredPin = '';
         $this->lockError = '';
         $this->orderItems = [];
-        $this->broadcastCustomerDisplayState('idle');
+        $this->awaitingPayment = false;
+        self::resetCustomerDisplay($this->kassaId);
     }
 
     public function setCategory(int|string $categoryId): void
@@ -1217,6 +1223,52 @@ class Terminal extends Component
             Cache::put('pos_customer_display_state', $data, 3600);
         }
         $this->dispatch('pos-display-updated', state: $data, kassaId: $this->kassaId);
+    }
+
+    public static function resetCustomerDisplay(string $kassaId = '1'): void
+    {
+        try {
+            $event = Event::active();
+        } catch (\Throwable) {
+            $event = null;
+        }
+
+        $data = [
+            'kassa_id' => $kassaId,
+            'state' => 'idle',
+            'event_name' => $event?->name ?? 'Kassa',
+            'vak_price' => $event?->vak_price ?? 100,
+            'card_price' => $event?->card_price ?? 2000,
+            'items' => [],
+            'total' => 0,
+            'vakjes' => 0,
+            'has_drankkaart' => false,
+            'card_total' => 0,
+            'drinks_total' => 0,
+            'drinks_vakjes' => 0,
+            'card_payment_method' => 'cash',
+            'cash_tendered' => 0,
+            'awaiting_payment' => false,
+            'last_payment_method' => null,
+            'last_cash_change' => null,
+            'last_drinks_vakjes' => null,
+            'scanned_poef_name' => null,
+            'scanned_shared_poef_name' => null,
+            'poef_total_spent' => null,
+            'updated_at' => microtime(true),
+        ];
+
+        Cache::put("pos_customer_display_state_{$kassaId}", $data, 3600);
+        if ($kassaId === '1') {
+            Cache::put('pos_customer_display_state', $data, 3600);
+        }
+    }
+
+    public static function resetAllCustomerDisplays(): void
+    {
+        foreach (['1', '2', '3'] as $kId) {
+            self::resetCustomerDisplay($kId);
+        }
     }
 
     private function storeOrder(Event $event, PaymentMode|string $method, ?string $cardUid = null, ?int $vakjes = null, ?int $poefId = null, ?int $cardId = null, ?int $customTotal = null, ?string $cardHash = null): void

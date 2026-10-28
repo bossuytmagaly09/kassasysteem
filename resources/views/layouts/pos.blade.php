@@ -12,6 +12,9 @@
         @livewireStyles
     </head>
     <body class="font-sans antialiased text-slate-100 bg-slate-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-indigo-950 to-slate-900 h-screen max-h-screen w-screen max-w-screen flex flex-col overflow-hidden select-none">
+        @php
+            $currentKassa = (string) ($kassaId ?? request('kassa') ?? session('pos_kassa_id', '1'));
+        @endphp
         
         <!-- Ambient Background -->
         <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 pointer-events-none"></div>
@@ -20,7 +23,7 @@
         <!-- Top Navigation Bar (Responsive, in-flow centered between buttons and clock) -->
         <div x-data="nfcScanner()" class="h-16 border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-6 z-40 relative shadow-sm gap-4 shrink-0">
             <div class="flex items-center gap-3 shrink-0">
-                <a href="{{ route('pos.exit') }}" class="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 rounded-xl transition-all text-slate-300 hover:text-white shrink-0" title="Kassa afsluiten en naar Hoofdmenu">
+                <a href="{{ route('pos.exit', ['kassa' => $currentKassa]) }}" class="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600/50 rounded-xl transition-all text-slate-300 hover:text-white shrink-0" title="Kassa afsluiten en naar Hoofdmenu">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
@@ -47,18 +50,15 @@
                     <span>Koppel Poef</span>
                 </button>
 
-                @php
-                    $currentKassa = (string) ($kassaId ?? request('kassa') ?? session('pos_kassa_id', '1'));
-                @endphp
                 <!-- Kassa Switcher -->
                 <div class="flex items-center gap-1 bg-slate-800/80 border border-slate-700/80 rounded-xl p-1 shrink-0">
                     <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1.5 hidden xl:inline">Kassa:</span>
-                    <a href="{{ route('pos.index', ['kassa' => '1']) }}"
+                    <a href="{{ route('pos.switch', ['toKassa' => '1', 'from' => $currentKassa]) }}"
                        class="px-2.5 py-1 rounded-lg text-xs font-black transition-all {{ $currentKassa === '1' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700' }}"
                        title="Schakel over naar Kassa 1">
                         Kassa 1
                     </a>
-                    <a href="{{ route('pos.index', ['kassa' => '2']) }}"
+                    <a href="{{ route('pos.switch', ['toKassa' => '2', 'from' => $currentKassa]) }}"
                        class="px-2.5 py-1 rounded-lg text-xs font-black transition-all {{ $currentKassa === '2' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700' }}"
                        title="Schakel over naar Kassa 2">
                         Kassa 2
@@ -291,6 +291,33 @@
                 }
             });
         }
+
+        // Wanneer de kassier dit scherm verlaat (navigatie, tab sluiten, terugknop), direct open bestelling wissen
+        window.addEventListener('pagehide', function() {
+            try {
+                if (window.BroadcastChannel) {
+                    const kassaId = '{{ $currentKassa }}';
+                    const bc = new BroadcastChannel('kassa_display_channel_' + kassaId);
+                    bc.postMessage({ state: 'idle', items: [], total: 0, vakjes: 0 });
+                    bc.close();
+                    if (kassaId === '1') {
+                        const legacyBc = new BroadcastChannel('kassa_display_channel');
+                        legacyBc.postMessage({ state: 'idle', items: [], total: 0, vakjes: 0 });
+                        legacyBc.close();
+                    }
+                }
+            } catch (e) {
+                // ignore
+            }
+
+            try {
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('{{ route("pos.clear-active-order") }}?kassa=' + encodeURIComponent('{{ $currentKassa }}'));
+                }
+            } catch (e) {
+                // ignore
+            }
+        });
         </script>
         @livewireScripts
     </body>

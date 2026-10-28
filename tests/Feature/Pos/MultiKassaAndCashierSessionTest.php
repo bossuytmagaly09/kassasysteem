@@ -229,4 +229,68 @@ class MultiKassaAndCashierSessionTest extends TestCase
         $this->get('/klantenscherm')->assertOk();
         $this->get('/display/2')->assertOk();
     }
+
+    public function test_leaving_kassa_to_dashboard_or_exit_clears_open_order_and_resets_customer_display(): void
+    {
+        // 1. Kassier voegt artikelen toe aan bestelling op Kassa 1
+        Livewire::test(Terminal::class, ['kassa' => '1'])
+            ->call('addToOrder', $this->cola->id);
+
+        $cachedBefore = Cache::get('pos_customer_display_state_1');
+        $this->assertNotEmpty($cachedBefore['items'] ?? []);
+        $this->assertEquals(250, $cachedBefore['total'] ?? 0);
+
+        // 2. Kassier verlaat kassa scherm naar pos.exit
+        $this->get(route('pos.exit', ['kassa' => '1']))->assertRedirect(route('dashboard'));
+
+        $cachedAfterExit = Cache::get('pos_customer_display_state_1');
+        $this->assertEquals('idle', $cachedAfterExit['state'] ?? '');
+        $this->assertEmpty($cachedAfterExit['items'] ?? []);
+        $this->assertEquals(0, $cachedAfterExit['total'] ?? 0);
+
+        // Klantenscherm staat op idle zonder open bestellingen
+        Livewire::test(CustomerDisplay::class, ['kassa' => '1'])
+            ->assertSet('state', 'idle')
+            ->assertSet('total', 0)
+            ->assertSet('items', []);
+    }
+
+    public function test_switching_kassa_clears_open_order_on_previous_kassa(): void
+    {
+        // 1. Kassier heeft open bestelling op Kassa 1
+        Livewire::test(Terminal::class, ['kassa' => '1'])
+            ->call('addToOrder', $this->cola->id)
+            ->call('switchKassa', '2')
+            ->assertRedirect(route('pos.index', ['kassa' => '2']));
+
+        // Kassa 1 klantenscherm moet direct leeggemaakt zijn
+        $cachedKassa1 = Cache::get('pos_customer_display_state_1');
+        $this->assertEquals('idle', $cachedKassa1['state'] ?? '');
+        $this->assertEmpty($cachedKassa1['items'] ?? []);
+        $this->assertEquals(0, $cachedKassa1['total'] ?? 0);
+
+        // En via route pos.switch
+        Livewire::test(Terminal::class, ['kassa' => '2'])
+            ->call('addToOrder', $this->cola->id);
+
+        $this->get(route('pos.switch', ['toKassa' => '1', 'from' => '2']))
+            ->assertRedirect(route('pos.index', ['kassa' => '1']));
+
+        $cachedKassa2 = Cache::get('pos_customer_display_state_2');
+        $this->assertEquals('idle', $cachedKassa2['state'] ?? '');
+        $this->assertEmpty($cachedKassa2['items'] ?? []);
+    }
+
+    public function test_beacon_endpoint_clears_active_order_when_leaving_page(): void
+    {
+        Livewire::test(Terminal::class, ['kassa' => '1'])
+            ->call('addToOrder', $this->cola->id);
+
+        $this->post(route('pos.clear-active-order', ['kassa' => '1']))
+            ->assertNoContent();
+
+        $cached = Cache::get('pos_customer_display_state_1');
+        $this->assertEquals('idle', $cached['state'] ?? '');
+        $this->assertEmpty($cached['items'] ?? []);
+    }
 }
