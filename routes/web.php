@@ -51,9 +51,12 @@ Route::get('/pos/{kassa?}', Terminal::class)->name('pos.index');
 
 // 2de Scherm / Klantenscherm (Customer Display - Geen login vereist)
 use App\Livewire\Pos\CustomerDisplay;
+use App\Livewire\Pos\PriceBoard;
 
 Route::get('/klantenscherm/{kassa?}', CustomerDisplay::class)->name('pos.display');
 Route::get('/display/{kassa?}', CustomerDisplay::class);
+Route::get('/prijzen', PriceBoard::class)->name('pos.priceboard');
+Route::get('/prijsbord', PriceBoard::class);
 
 use App\Livewire\Admin\CategoryManager;
 use App\Livewire\Admin\Dashboard;

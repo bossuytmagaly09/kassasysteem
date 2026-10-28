@@ -1010,35 +1010,61 @@ class Terminal extends Component
         $this->scannedSharedPoefName = null;
         $this->scannedPoefInfoTotalSpent = null;
         $this->scannedPoefInfoError = null;
-        $this->broadcastCustomerDisplayState('idle');
+        $this->broadcastCustomerDisplayState();
     }
 
     public function broadcastPoefInfoDisplay(?string $name, ?int $totalSpent, ?string $error = null, ?string $sharedName = null): void
     {
         $event = Event::active();
+        $cardProductId = $event ? $this->resolvePunchCardProductId($event) : null;
+        $baseState = $this->paymentSuccess
+            ? 'success'
+            : ($this->awaitingPayment
+                ? 'awaiting_payment'
+                : (! empty($this->orderItems) ? 'cart' : 'idle'));
+
         $data = [
             'kassa_id' => $this->kassaId,
-            'state' => 'poef_info',
+            'state' => $baseState,
+            'show_poef_info' => true,
             'event_name' => $event?->name ?? 'Kassa',
             'vak_price' => $event?->vak_price ?? 100,
             'card_price' => $event?->card_price ?? 2000,
-            'items' => [],
-            'total' => 0,
-            'vakjes' => 0,
-            'has_drankkaart' => false,
-            'card_total' => 0,
-            'drinks_total' => 0,
-            'drinks_vakjes' => 0,
-            'card_payment_method' => 'cash',
-            'cash_tendered' => '',
-            'awaiting_payment' => false,
-            'last_payment_method' => null,
-            'last_cash_change' => null,
-            'last_drinks_vakjes' => null,
+            'items' => array_map(function (array $item) use ($event, $cardProductId): array {
+                $price = (int) $item['price'];
+                $quantity = (int) $item['quantity'];
+                $vakPrice = max($event?->vak_price ?? 100, 1);
+                $isDrankkaart = (bool) ($item['is_drankkaart'] ?? false)
+                    || in_array($item['name'] ?? '', ['Consumptiekaart', 'Drankkaart'])
+                    || ($cardProductId !== null && ($item['product_id'] ?? null) === $cardProductId);
+                $vakjes = $isDrankkaart ? 0 : (int) ceil(($price * $quantity) / $vakPrice);
+
+                return [
+                    'name' => $item['name'],
+                    'quantity' => $quantity,
+                    'price' => $price,
+                    'total' => $price * $quantity,
+                    'is_drankkaart' => $isDrankkaart,
+                    'vakjes' => $vakjes,
+                ];
+            }, $this->orderItems),
+            'total' => $this->calculateTotal(),
+            'vakjes' => $this->calculateDrinksVakjes(),
+            'has_drankkaart' => $this->hasDrankkaartInCart(),
+            'card_total' => $this->calculateCardTotal(),
+            'drinks_total' => $this->calculateDrinksTotal(),
+            'drinks_vakjes' => $this->calculateDrinksVakjes(),
+            'card_payment_method' => $this->cardPaymentMethod,
+            'cash_tendered' => $this->cashTendered,
+            'awaiting_payment' => $this->awaitingPayment,
+            'last_payment_method' => $this->lastPaymentMethod,
+            'last_cash_change' => $this->lastCashChange,
+            'last_drinks_vakjes' => $this->lastDrinksVakjes,
             'scanned_poef_name' => $name,
             'scanned_shared_poef_name' => $sharedName,
             'poef_total_spent' => $totalSpent,
             'poef_info_error' => $error,
+            'poef_info_timestamp' => microtime(true),
             'updated_at' => microtime(true),
         ];
 

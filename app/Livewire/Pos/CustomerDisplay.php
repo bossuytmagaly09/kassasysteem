@@ -52,6 +52,8 @@ class CustomerDisplay extends Component
 
     public ?string $poefInfoError = null;
 
+    public bool $showPoefModal = false;
+
     public array $eventProducts = [];
 
     public float $stateTimestamp = 0.0;
@@ -94,6 +96,7 @@ class CustomerDisplay extends Component
 
         $now = microtime(true);
         $updatedAt = (float) ($cached['updated_at'] ?? $now);
+        $poefInfoTime = (float) ($cached['poef_info_timestamp'] ?? $updatedAt);
 
         // If in success state and more than 12 seconds passed, automatically revert to idle
         if (($cached['state'] ?? '') === 'success' && ($now - $updatedAt) > 12.0) {
@@ -104,22 +107,41 @@ class CustomerDisplay extends Component
             $this->awaitingPayment = false;
             $this->scannedPoefName = null;
             $this->scannedSharedPoefName = null;
+            $this->showPoefModal = false;
 
             return;
         }
 
-        // If in poef_info state and more than 7 seconds passed, automatically revert to idle
-        if (($cached['state'] ?? '') === 'poef_info' && ($now - $updatedAt) > 7.0) {
-            $this->state = 'idle';
-            $this->scannedPoefName = null;
-            $this->scannedSharedPoefName = null;
-            $this->poefTotalSpent = null;
-            $this->poefInfoError = null;
+        $isPoefScan = ! empty($cached['show_poef_info'])
+            || (($cached['state'] ?? '') === 'poef_info')
+            || (! empty($cached['scanned_poef_name']) && ($cached['state'] ?? '') !== 'success')
+            || ! empty($cached['poef_info_error']);
 
-            return;
+        if ($isPoefScan && ($cached['state'] ?? '') !== 'success') {
+            if (($now - $poefInfoTime) <= 6.0) {
+                $this->showPoefModal = true;
+                $this->scannedPoefName = $cached['scanned_poef_name'] ?? null;
+                $this->scannedSharedPoefName = $cached['scanned_shared_poef_name'] ?? null;
+                $this->poefTotalSpent = isset($cached['poef_total_spent']) ? (int) $cached['poef_total_spent'] : null;
+                $this->poefInfoError = $cached['poef_info_error'] ?? null;
+            } else {
+                $this->showPoefModal = false;
+                $this->scannedPoefName = null;
+                $this->scannedSharedPoefName = null;
+                $this->poefTotalSpent = null;
+                $this->poefInfoError = null;
+            }
+        } else {
+            $this->showPoefModal = false;
         }
 
-        $this->state = $cached['state'] ?? 'idle';
+        $rawState = $cached['state'] ?? 'idle';
+        if ($rawState === 'poef_info') {
+            $this->state = ! empty($cached['items']) ? 'cart' : 'idle';
+        } else {
+            $this->state = $rawState;
+        }
+
         $this->eventName = $cached['event_name'] ?? 'Kassa';
         $this->vakPrice = (int) ($cached['vak_price'] ?? 100);
         $this->cardPrice = (int) ($cached['card_price'] ?? 2000);
@@ -135,11 +157,26 @@ class CustomerDisplay extends Component
         $this->lastPaymentMethod = $cached['last_payment_method'] ?? null;
         $this->lastCashChange = isset($cached['last_cash_change']) ? (int) $cached['last_cash_change'] : null;
         $this->lastDrinksVakjes = isset($cached['last_drinks_vakjes']) ? (int) $cached['last_drinks_vakjes'] : null;
-        $this->scannedPoefName = $cached['scanned_poef_name'] ?? null;
-        $this->scannedSharedPoefName = $cached['scanned_shared_poef_name'] ?? null;
-        $this->poefTotalSpent = isset($cached['poef_total_spent']) ? (int) $cached['poef_total_spent'] : null;
-        $this->poefInfoError = $cached['poef_info_error'] ?? null;
+        if (! $this->showPoefModal && ($this->state !== 'success')) {
+            $this->scannedPoefName = null;
+            $this->scannedSharedPoefName = null;
+            $this->poefTotalSpent = null;
+            $this->poefInfoError = null;
+        } elseif ($this->state === 'success') {
+            $this->scannedPoefName = $cached['scanned_poef_name'] ?? null;
+            $this->scannedSharedPoefName = $cached['scanned_shared_poef_name'] ?? null;
+            $this->poefTotalSpent = isset($cached['poef_total_spent']) ? (int) $cached['poef_total_spent'] : null;
+        }
         $this->stateTimestamp = $updatedAt;
+    }
+
+    public function closePoefModal(): void
+    {
+        $this->showPoefModal = false;
+        $this->scannedPoefName = null;
+        $this->scannedSharedPoefName = null;
+        $this->poefTotalSpent = null;
+        $this->poefInfoError = null;
     }
 
     protected function loadEventProducts(): void

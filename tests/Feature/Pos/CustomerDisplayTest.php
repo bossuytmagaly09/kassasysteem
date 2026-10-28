@@ -3,6 +3,7 @@
 namespace Tests\Feature\Pos;
 
 use App\Livewire\Pos\CustomerDisplay;
+use App\Livewire\Pos\PriceBoard;
 use App\Livewire\Pos\Terminal;
 use App\Models\Card;
 use App\Models\Category;
@@ -179,5 +180,36 @@ class CustomerDisplayTest extends TestCase
             ->assertSet('vakjes', 3)
             ->assertSee('Vakjes voor consumpties:')
             ->assertSee('3 vakjes');
+    }
+
+    public function test_saldo_check_shows_popup_modal_and_retains_active_cart_in_background(): void
+    {
+        // 1. Add Cola to order on Terminal
+        Livewire::test(Terminal::class)
+            ->call('addToOrder', $this->cola->id)
+            ->call('handleScan', '04A23B19'); // Saldo check scan (awaitingPayment is false)
+
+        // 2. Customer display should show poef popup overlay WHILE keeping the cart and items visible!
+        Livewire::test(CustomerDisplay::class)
+            ->assertSet('showPoefModal', true)
+            ->assertSet('state', 'cart')
+            ->assertSet('total', 250)
+            ->assertSee('Jonathan')
+            ->assertSee('Huidig saldo / Totaal uitgegeven vanavond:')
+            ->assertSee('Cola')
+            ->assertSee('€ 2,50');
+    }
+
+    public function test_price_board_is_accessible_and_shows_products_without_category(): void
+    {
+        $this->get(route('pos.priceboard'))
+            ->assertOk()
+            ->assertSee('Cola')
+            ->assertSee('€ 2,50')
+            ->assertSee('Zomerfeest 2026');
+
+        Livewire::test(PriceBoard::class)
+            ->assertSee('Cola')
+            ->assertSee('€ 2,50');
     }
 }
