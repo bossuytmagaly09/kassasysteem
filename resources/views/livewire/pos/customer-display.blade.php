@@ -253,14 +253,21 @@
 
     <!-- ========================================================================= -->
     <!-- POEF SALDO CHECK MODAL OVERLAY POPUP (Bestelling blijft op achtergrond)   -->
-    <!-- Geen avatar icoontje, sluit automatisch na 5 seconden                     -->
+    <!-- Geen avatar icoontje, sluit automatisch na 3 seconden (of bij aantikken)  -->
     <!-- ========================================================================= -->
     @if($showPoefModal)
         <div wire:key="poef-modal-overlay"
-             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 transition-all duration-300"
              x-data="{ show: true }"
              x-show="show"
-             x-init="setTimeout(() => { show = false; $wire.closePoefModal(); }, 5000)">
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             x-init="setTimeout(() => { show = false; $wire.closePoefModal(); }, 3000)"
+             @click="show = false; $wire.closePoefModal();">
             <div class="w-full max-w-lg p-6 sm:p-8 rounded-3xl bg-slate-900 border-2 border-indigo-500/70 shadow-[0_0_50px_rgba(99,102,241,0.3)] text-center relative">
                 @if($scannedPoefName)
                     <h2 class="text-3xl sm:text-4xl font-black text-white mb-1.5">

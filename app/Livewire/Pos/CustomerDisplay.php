@@ -54,6 +54,8 @@ class CustomerDisplay extends Component
 
     public bool $showPoefModal = false;
 
+    public ?float $dismissedPoefTimestamp = null;
+
     public array $eventProducts = [];
 
     public float $stateTimestamp = 0.0;
@@ -117,8 +119,8 @@ class CustomerDisplay extends Component
             || (! empty($cached['scanned_poef_name']) && ($cached['state'] ?? '') !== 'success')
             || ! empty($cached['poef_info_error']);
 
-        if ($isPoefScan && ($cached['state'] ?? '') !== 'success') {
-            if (($now - $poefInfoTime) <= 6.0) {
+        if ($isPoefScan && ($cached['state'] ?? '') !== 'success' && $this->dismissedPoefTimestamp !== $poefInfoTime) {
+            if (($now - $poefInfoTime) <= 3.2) {
                 $this->showPoefModal = true;
                 $this->scannedPoefName = $cached['scanned_poef_name'] ?? null;
                 $this->scannedSharedPoefName = $cached['scanned_shared_poef_name'] ?? null;
@@ -177,6 +179,12 @@ class CustomerDisplay extends Component
         $this->scannedSharedPoefName = null;
         $this->poefTotalSpent = null;
         $this->poefInfoError = null;
+
+        $cacheKey = "pos_customer_display_state_{$this->kassaId}";
+        $cached = Cache::get($cacheKey) ?: ($this->kassaId === '1' ? Cache::get('pos_customer_display_state') : null);
+        if (is_array($cached) && ! empty($cached['poef_info_timestamp'])) {
+            $this->dismissedPoefTimestamp = (float) $cached['poef_info_timestamp'];
+        }
     }
 
     protected function loadEventProducts(): void
