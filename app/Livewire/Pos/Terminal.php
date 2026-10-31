@@ -272,23 +272,13 @@ class Terminal extends Component
             return;
         }
 
-        $remaining = $this->remainingStock($event, $product->id, $product->pivot->stock_planned);
-
         foreach ($this->orderItems as $index => $item) {
             if ($item['product_id'] === $product->id) {
-                if ($remaining !== null && $item['quantity'] >= $remaining) {
-                    return;
-                }
-
                 $this->orderItems[$index]['quantity']++;
                 $this->broadcastCustomerDisplayState();
 
                 return;
             }
-        }
-
-        if ($remaining !== null && $remaining <= 0) {
-            return;
         }
 
         $this->orderItems[] = [
@@ -1409,7 +1399,6 @@ class Terminal extends Component
 
         if ($event) {
             $sold = $event->soldQuantities();
-            $inCart = collect($this->orderItems)->pluck('quantity', 'product_id');
 
             $query = $event->products()
                 ->where(function ($query): void {
@@ -1424,11 +1413,10 @@ class Terminal extends Component
             $products = $query->orderBy('products.sort')
                 ->orderBy('products.name')
                 ->get()
-                ->each(function ($product) use ($sold, $inCart): void {
+                ->each(function ($product) use ($sold): void {
                     $planned = $product->pivot->stock_planned;
                     $product->remaining = $planned === null ? null : $planned - ($sold[$product->id] ?? 0);
-                    $product->sold_out = $product->remaining !== null
-                        && $product->remaining - ($inCart[$product->id] ?? 0) <= 0;
+                    $product->sold_out = false;
                 });
         }
 

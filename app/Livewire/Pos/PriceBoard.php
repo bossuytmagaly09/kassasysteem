@@ -56,7 +56,7 @@ class PriceBoard extends Component
                     'name' => preg_replace('/\s*\(.*?\)/', '', $p->name),
                     'price' => $price,
                     'vakjes_text' => $vText,
-                    'sold_out' => (bool) $p->sold_out,
+                    'sold_out' => false,
                 ];
             })
             ->toArray();

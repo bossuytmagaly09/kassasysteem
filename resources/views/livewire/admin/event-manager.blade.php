@@ -893,9 +893,10 @@
                                     @php
                                         $planned = $product->pivot->stock_planned;
                                         $soldQty = $sold[$product->id] ?? 0;
+                                        $extraSold = ($planned !== null && $soldQty > $planned) ? ($soldQty - $planned) : 0;
                                         $remaining = $planned === null ? null : max($planned - $soldQty, 0);
                                         $percent = $planned ? min(100, round($soldQty / $planned * 100)) : 0;
-                                        $barColor = $remaining === 0 ? 'bg-red-500' : ($percent >= 80 ? 'bg-amber-400' : 'bg-emerald-400');
+                                        $barColor = $extraSold > 0 ? 'bg-fuchsia-500' : ($remaining === 0 ? 'bg-amber-400' : ($percent >= 80 ? 'bg-amber-400' : 'bg-emerald-400'));
                                         $pUnit = $product->pivot->purchase_unit;
                                         $pQty = $product->pivot->purchase_quantity;
                                         $sPerUnit = $product->pivot->servings_per_unit;
@@ -994,12 +995,18 @@
 
                                         <!-- Verkocht & Voortgangsbalk -->
                                         <td class="p-4 min-w-[200px]">
-                                            <div class="flex items-center justify-between text-xs mb-1.5">
-                                                <span class="text-slate-400 font-semibold">{{ $soldQty }} verkocht</span>
-                                                @if($remaining === null)
+                                            <div class="flex items-center justify-between text-xs mb-1.5 gap-2">
+                                                <span class="text-slate-400 font-semibold shrink-0">{{ $soldQty }} verkocht</span>
+                                                @if($planned === null)
                                                     <span class="font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-md border border-indigo-500/30">Onbeperkt</span>
+                                                @elseif($extraSold > 0)
+                                                    <span class="font-black text-fuchsia-300 bg-fuchsia-500/20 px-2 py-0.5 rounded-md border border-fuchsia-500/40">
+                                                        +{{ $extraSold }} extra verkocht
+                                                    </span>
                                                 @elseif($remaining === 0)
-                                                    <span class="font-black text-red-400 bg-red-500/20 px-2 py-0.5 rounded-md border border-red-500/40 animate-pulse">UITVERKOCHT</span>
+                                                    <span class="font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/40">
+                                                        0 over (exact op)
+                                                    </span>
                                                 @elseif($remaining <= 10)
                                                     <span class="font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/40">{{ $remaining }} over (bijna op!)</span>
                                                 @else

@@ -69,16 +69,11 @@
                 <!-- Kolom 1 (Links) -->
                 <div class="space-y-3 sm:space-y-3.5">
                     @foreach($leftProducts as $product)
-                        <div class="flex items-center justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-900/85 border border-slate-800 hover:border-slate-700/80 shadow-md backdrop-blur-md transition-all {{ $product['sold_out'] ? 'opacity-50 grayscale' : '' }}">
+                        <div class="flex items-center justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-900/85 border border-slate-800 hover:border-slate-700/80 shadow-md backdrop-blur-md transition-all">
                             <div class="min-w-0 flex-1 pr-3">
                                 <h4 class="text-xl sm:text-2xl font-black text-white tracking-tight truncate">
                                     {{ $product['name'] }}
                                 </h4>
-                                @if($product['sold_out'])
-                                    <span class="inline-block mt-1 px-2.5 py-0.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30 uppercase tracking-wider">
-                                        Uitverkocht
-                                    </span>
-                                @endif
                             </div>
 
                             <div class="text-right shrink-0 ml-3">
@@ -98,16 +93,11 @@
                 <!-- Kolom 2 (Rechts) -->
                 <div class="space-y-3 sm:space-y-3.5">
                     @foreach($rightProducts as $product)
-                        <div class="flex items-center justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-900/85 border border-slate-800 hover:border-slate-700/80 shadow-md backdrop-blur-md transition-all {{ $product['sold_out'] ? 'opacity-50 grayscale' : '' }}">
+                        <div class="flex items-center justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-900/85 border border-slate-800 hover:border-slate-700/80 shadow-md backdrop-blur-md transition-all">
                             <div class="min-w-0 flex-1 pr-3">
                                 <h4 class="text-xl sm:text-2xl font-black text-white tracking-tight truncate">
                                     {{ $product['name'] }}
                                 </h4>
-                                @if($product['sold_out'])
-                                    <span class="inline-block mt-1 px-2.5 py-0.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30 uppercase tracking-wider">
-                                        Uitverkocht
-                                    </span>
-                                @endif
                             </div>
 
                             <div class="text-right shrink-0 ml-3">

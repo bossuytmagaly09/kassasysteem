@@ -158,7 +158,7 @@ class TerminalTest extends TestCase
             ->assertSet('showDrankkaartModal', false);
     }
 
-    public function test_stock_limits_sales_and_marks_product_sold_out(): void
+    public function test_stock_does_not_block_sales_and_allows_selling_extra_beyond_planned_stock(): void
     {
         $poef = Poef::create(['external_id' => 9999, 'name' => 'Stock Test Lid']);
         Card::create([
@@ -169,17 +169,20 @@ class TerminalTest extends TestCase
 
         $this->event->products()->updateExistingPivot($this->cola->id, ['stock_planned' => 2]);
 
+        // Stock count does not block adding items to order beyond planned stock
         Livewire::test(Terminal::class)
             ->call('addToOrder', $this->cola->id)
             ->call('addToOrder', $this->cola->id)
             ->call('addToOrder', $this->cola->id)
-            ->assertSet('orderItems.0.quantity', 2)
+            ->assertSet('orderItems.0.quantity', 3)
             ->call('startPayment')
             ->call('handleScan', 'CARD-1')
-            ->assertSee('UITVERKOCHT')
             ->call('closeSuccess')
+            ->assertDontSee('UITVERKOCHT')
+            ->assertSee('+1 extra')
+            // Can continue selling extra beyond planned stock
             ->call('addToOrder', $this->cola->id)
-            ->assertSet('orderItems', []);
+            ->assertSet('orderItems.0.quantity', 1);
     }
 
     public function test_cart_cannot_change_while_a_modal_is_open(): void

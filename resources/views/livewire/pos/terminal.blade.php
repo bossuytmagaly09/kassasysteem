@@ -174,11 +174,16 @@
                         type="button"
                         wire:key="product-{{ $product->id }}"
                         wire:click="addToOrder({{ $product->id }})"
-                        @disabled($product->sold_out)
-                        class="group relative min-h-[140px] p-4 bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-2xl flex flex-col items-center justify-center hover:bg-indigo-900/40 hover:border-indigo-500/50 active:bg-indigo-600/60 active:scale-95 transition-all duration-150 overflow-hidden shadow-lg disabled:grayscale disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-800/50 disabled:hover:border-slate-600/50 disabled:active:scale-100">
+                        class="group relative min-h-[140px] p-4 bg-slate-800/50 backdrop-blur-sm border border-slate-600/50 rounded-2xl flex flex-col items-center justify-center hover:bg-indigo-900/40 hover:border-indigo-500/50 active:bg-indigo-600/60 active:scale-95 transition-all duration-150 overflow-hidden shadow-lg">
                         @if($product->remaining !== null)
-                            <span class="absolute top-2 right-3 text-xs font-bold pointer-events-none {{ $product->sold_out ? 'text-red-400' : ($product->remaining <= 10 ? 'text-amber-400' : 'text-slate-500') }}">
-                                {{ $product->sold_out ? 'UITVERKOCHT' : $product->remaining.' over' }}
+                            <span class="absolute top-2 right-3 text-xs font-bold pointer-events-none {{ $product->remaining < 0 ? 'text-fuchsia-400 font-extrabold' : ($product->remaining <= 10 ? 'text-amber-400' : 'text-slate-400') }}">
+                                @if($product->remaining > 0)
+                                    {{ $product->remaining }} over
+                                @elseif($product->remaining === 0)
+                                    0 over
+                                @else
+                                    +{{ abs($product->remaining) }} extra
+                                @endif
                             </span>
                         @endif
                         <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/0 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>

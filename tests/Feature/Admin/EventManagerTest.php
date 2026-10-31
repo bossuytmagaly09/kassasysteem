@@ -5,6 +5,8 @@ namespace Tests\Feature\Admin;
 use App\Livewire\Admin\EventManager;
 use App\Models\Category;
 use App\Models\Event;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\PaymentMode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -303,5 +305,33 @@ class EventManagerTest extends TestCase
 
         $this->assertEquals(2500, $event->fresh()->card_price);
         $this->assertEquals(125, $event->fresh()->vak_price);
+    }
+
+    public function test_event_manager_shows_extra_sold_without_uitverkocht_when_stock_exceeded(): void
+    {
+        $category = Category::create(['name' => 'Dranken', 'slug' => 'dranken']);
+        $product = Product::create(['category_id' => $category->id, 'name' => 'Pils', 'price' => 200]);
+        $event = Event::factory()->active()->create();
+        $event->products()->attach($product->id, ['price' => 200, 'stock_planned' => 5]);
+
+        $order = Order::create([
+            'event_id' => $event->id,
+            'payment_method' => 'cash',
+            'total' => 1400,
+            'status' => 'completed',
+        ]);
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_price' => 200,
+            'quantity' => 7,
+        ]);
+
+        Livewire::test(EventManager::class)
+            ->call('selectEvent', $event->id)
+            ->assertSee('7 verkocht')
+            ->assertSee('+2 extra verkocht')
+            ->assertDontSee('UITVERKOCHT');
     }
 }
